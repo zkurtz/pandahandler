@@ -7,21 +7,13 @@ from typing import Hashable
 import pandas as pd
 from typing_extensions import Self
 
-
-def _get_categoricals(types_: pd.Series) -> list[Hashable]:
-    """Return the names of categorical columns."""
-    return [col for col, dtype in types_.items() if isinstance(dtype, pd.CategoricalDtype)]
-
-
-def _get_numerics(types_: pd.Series) -> list[Hashable]:
-    """Return the names of numeric columns."""
-    return [col for col, dtype in types_.items() if pd.api.types.is_numeric_dtype(dtype)]
+from pandahandler.frames import columns
 
 
 def categorize_non_numerics(df: pd.DataFrame) -> pd.DataFrame:
     """Categorize columns that are neither categorical nor numeric."""
-    categoricals = _get_categoricals(df.dtypes)
-    numerics = _get_numerics(df.dtypes)
+    categoricals = columns.list_categoricals(df.dtypes)
+    numerics = columns.list_numerics(df.dtypes)
     num_or_cat = set(categoricals + numerics)
     others = [col for col in df if col not in num_or_cat]
     df[others] = df[others].astype("category")
@@ -53,7 +45,7 @@ class Schema:
     @classmethod
     def from_df(cls, df: pd.DataFrame) -> Self:
         """Create a ColumnTypes object from a data frame."""
-        categoricals = _get_categoricals(df.dtypes)
+        categoricals = columns.list_categoricals(df.dtypes)
         return cls(
             types_=df.dtypes,
             categorical_encodings={col: df[col].cat.categories for col in categoricals},
@@ -67,14 +59,12 @@ class Schema:
     @cached_property
     def numerics(self) -> list[Hashable]:
         """Return the names of numeric columns."""
-        return [col for col, dtype in self.types_.items() if pd.api.types.is_numeric_dtype(dtype)]
+        return columns.list_numerics(self.types_)
 
     @cached_property
     def others(self) -> list[Hashable]:
         """Return the names of columns that are neither categorical nor numeric."""
-        numerics = self.numerics
-        categoricals = self.categoricals
-        categorical_or_numeric = set(categoricals + numerics)
+        categorical_or_numeric = set(self.categoricals + self.numerics)
         return [col for col in self.types_.index if col not in categorical_or_numeric]
 
     def __call__(self, df: pd.DataFrame) -> pd.DataFrame:
