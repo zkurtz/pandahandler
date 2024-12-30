@@ -1,6 +1,8 @@
 # pandahandler
 
-Tools for handling pandas objects such as data frames and series.
+Definition: A "panda" is an indexed data series or frame, making it possible to access data in the ith element, row, or column directly by its index value(s).
+
+This package is for working with pandas such as pandas.DataFrame and pandas.Series. In theory it could extend to other kinds of pandas, such as `polars` objects if polars ever introduces indexed data series or frames.
 
 ## Installation
 
