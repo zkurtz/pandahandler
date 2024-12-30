@@ -151,10 +151,11 @@ wheels = [
 
 [[package]]
 name = "pandahandler"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
     { name = "pandas" },
+    { name = "sigfig" },
     { name = "typing-extensions" },
 ]
 
@@ -169,6 +170,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=1.5.0" },
+    { name = "sigfig", specifier = ">=1.3.18" },
     { name = "typing-extensions", specifier = ">=4.5.0" },
 ]
 
@@ -383,12 +385,33 @@ wheels = [
 ]
 
 [[package]]
+name = "sigfig"
+version = "1.3.18"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "sortedcontainers" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d1/50/d9c34266f770042f84996e18ba1efade7eb2d081f28ce4713943e30555df/sigfig-1.3.18.tar.gz", hash = "sha256:7c1e4cc10ae61f99a0bb0a96e0a5b1a4907570d5974016cb18d317f92ee36b5c", size = 11293 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/68/d9dff69716dcd559db21b1effb70c8c58e3a4374db04113a39bf8ea405e7/sigfig-1.3.18-py3-none-any.whl", hash = "sha256:cf423c85734b80917ac2f5150d9f5c4e06e77abdece0602f2ea2d2cef45bc0f3", size = 10480 },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68a0e064b6af791aa332cf192da575fd474ed7d6f16a2/six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81", size = 34031 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050 },
+]
+
+[[package]]
+name = "sortedcontainers"
+version = "2.4.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e8/c4/ba2f8066cceb6f23394729afe52f3bf7adec04bf9ed2c820b39e19299111/sortedcontainers-2.4.0.tar.gz", hash = "sha256:25caa5a06cc30b6b83d11423433f65d1f9d76c4c6a0c90e3379eaa43b9bfdb88", size = 30594 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/46/9cb0e58b2deb7f82b84065f37f3bffeb12413f947f9388e4cac22c4621ce/sortedcontainers-2.4.0-py2.py3-none-any.whl", hash = "sha256:a163dcaede0f1c021485e957a39245190e74249897e2ae4b2aa38595db237ee0", size = 29575 },
 ]
 
 [[package]]

@@ -22,11 +22,20 @@ def categorize_non_numerics(df: pd.DataFrame) -> pd.DataFrame:
 
 @dataclass(frozen=True)
 class Schema:
-    """Managing a data frame's schema information, including tools of coercion.
+    """Using and applying a data frame's schema information.
+
+    The primary intended use case is in open-world data exploration, where the schema of the input data is not known in
+    advance. If you know the schema in advance, consider using a more declarative approach such as pandera.
+
+    Note that the categorical encodings attribute is important information that's not traditionally captured in
+    "schema" information, although it is important for encoding any new data in a way that's consistent with training
+    data for scoring in machine learning applications.
 
     Attributes:
         types_: The data types of the columns.
-        categorical_encodings: The categories of the categorical columns
+        categorical_encodings: The categories of the categorical columns. The keys are the column names (for columns
+            of categorical type) and the values are index objects expressing the integeger-category mappings defining
+            that column's categorical encoding.
     """
 
     types_: pd.Series
