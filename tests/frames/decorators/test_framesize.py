@@ -8,8 +8,12 @@ from pandahandler.frames.decorators.framesize import log_rowcount_change
 
 def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     @log_rowcount_change
-    def add_row(df: pd.DataFrame) -> pd.DataFrame:
+    def double(df: pd.DataFrame) -> pd.DataFrame:
         return pd.concat([df, df], axis=0)
+
+    @log_rowcount_change(logger=logging.getLogger("my_test"))
+    def add_row(df: pd.DataFrame) -> pd.DataFrame:
+        return pd.concat([df, df.iloc[[0]]], axis=0)
 
     @log_rowcount_change
     def no_change(df: pd.DataFrame) -> pd.DataFrame:
@@ -22,13 +26,19 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     df = pd.DataFrame({"a": [1, 2, 3]})
     with caplog.at_level(logging.INFO):
         caplog.clear()
-        add_row(df)
+        double(df)
         assert caplog.text.startswith("INFO     test_framesize:framesize.py")
-        assert caplog.text.endswith("add_row returned 6 rows, up 3 rows (100.0%).\n")
+        assert caplog.text.endswith("double returned 6 rows, up 3 rows (100.0%).\n")
 
         caplog.clear()
         no_change(df)
         assert caplog.text.endswith("no_change did not affect the row count.\n")
+
+        caplog.clear()
+        df2 = pd.concat([df, df.iloc[[0]]], axis=0)
+        add_row(df2)
+        assert caplog.text.startswith("INFO     my_test:framesize.py")
+        assert caplog.text.endswith("add_row returned 5 rows, up 1 rows (25.0%).\n")
 
     with caplog.at_level(logging.CRITICAL):
         # Since the decorator was defined only for level WARN, nothing should be logged at CRITICAL level:

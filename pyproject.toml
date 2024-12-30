@@ -1,6 +1,6 @@
 [project]
 name = "pandahandler"
-version = "0.2.1"
+version = "0.2.2"
 description = "Tools for handling pandas objects."
 authors = [{ name = "Zach Kurtz", email = "zkurtz@gmail.com" }]
 readme = "README.md"
