@@ -7,9 +7,6 @@ from typing import Callable, TypeAlias
 import pandas as pd
 from sigfig import round as sround
 
-logger = logging.getLogger(__name__)
-
-
 FunType: TypeAlias = Callable[[pd.DataFrame], pd.DataFrame]
 
 
