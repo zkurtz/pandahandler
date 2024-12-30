@@ -46,7 +46,7 @@ def log_rowcount_change(*args: FunType, logger: logging.Logger | None = None, le
             if n_delta == 0:
                 logger.log(level=level, msg=f"{func.__name__} did not affect the row count.")
                 return df
-            pct_delta = sround((n_delta / n_input) * 100, sigfigs=3)
+            pct_delta = sround((n_delta / n_input) * 100, sigfigs=3, warning=False)
             delta_str = "down" if n_delta <= 0 else "up"
             msg = f"{func.__name__} returned {n_output} rows, {delta_str} {abs(n_delta)} rows ({pct_delta}%)."
             logger.log(level=level, msg=msg)
