@@ -51,9 +51,9 @@ class Index:
     """
 
     names: FrozenList = field(converter=FrozenList, validator=min_len(1))
-    allow_null: bool = False
-    sort: bool = field(default=False, validator=_validate_sort_vs_null)
-    require_unique: bool = True
+    allow_null: bool = field(default=False, kw_only=True)
+    sort: bool = field(default=False, kw_only=True, validator=_validate_sort_vs_null)
+    require_unique: bool = field(default=True, kw_only=True)
 
     def __call__(self, df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """Set the index on the data frame.
