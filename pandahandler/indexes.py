@@ -30,6 +30,34 @@ def _validate_sort_vs_null(instance: "Index", _: Any, __: Any) -> None:
         raise ValueError("`sorted=True` is not allowed with and `allow_null=True`.")
 
 
+def _assert_index_vs_cols_disjoint(df: pd.DataFrame) -> None:
+    """Assert that the index names are disjoint from the column names of the data frame."""
+    index = df.index
+    column_name_overlap = set(df.columns).intersection(index.names)
+    if column_name_overlap:
+        msg = "Data frame index column names match the names of non-index columns"
+        raise ValueError(f"{msg}: {column_name_overlap}.")
+
+
+def unset(df: pd.DataFrame) -> pd.DataFrame:
+    """Safely convert the columns of the data frame index to regular columns.
+
+    Args:
+        df: The data frame to unset the index on.
+
+    Raises:
+        ValueError: If the data frame column names overlap with the index names.
+
+    Returns:
+        A copy of the input data frame with the index columns reset as regular columns. The new index is
+        a simple RangeIndex.
+    """
+    if is_unnamed_range_index(df.index):
+        return df
+    _assert_index_vs_cols_disjoint(df)
+    return df.reset_index(drop=False)
+
+
 @frozen
 class Index:
     """A functional wrapper around pandas indexes.
@@ -64,18 +92,37 @@ class Index:
         Args:
             df: The data frame to set the index on.
             **kwargs: Additional arguments to pass to the set_index method.
+
+        Raises:
+            ValueError: If the verify_integrity kwarg is inconsistent with the require_unique attribute.
+            ValueError: If there is overlap between the existing index column names and the column names.
         """
+        # resolve the verify_integrity argument in a way that's not inconsistent with the require_unique attribute:
         verify_integrity = kwargs.get("verify_integrity", self.require_unique)
         if verify_integrity is not self.require_unique:
             raise ValueError("The verify_integrity argument must be consistent with the require_unique attribute.")
         kwargs["verify_integrity"] = self.require_unique
 
+        # raise value error if there is overlap between the existing index column names and the column names:
+        _assert_index_vs_cols_disjoint(df)
+
+        # set the index, retaining the columns of any existing index as regular columns:
         if not is_unnamed_range_index(df.index):
             df = df.reset_index(drop=False)
         df = df.set_index(self.names, **kwargs)
 
+        # check nulls if applicable
         if not self.allow_null:
             assert_no_nulls(index=df.index)
+
+        # sort if required
         if self.sort:
             df = df.sort_index()
         return df
+
+    def assert_equal_names(self, index: pd.Index) -> None:
+        """Assert that names of the provided index match the names of this index."""
+        if not index.names == self.names:
+            expected = f"Expected: {self.names}"
+            provided = f"Provided: {index.names}"
+            raise ValueError(f"Index names mismatch:\n   {expected}\n   {provided}.")
