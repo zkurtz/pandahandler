@@ -2,12 +2,12 @@
 
 import inspect
 import logging
-from typing import Callable, TypeAlias
+from typing import Callable
 
 import pandas as pd
 from sigfig import round as sround
 
-FunType: TypeAlias = Callable[[pd.DataFrame], pd.DataFrame]
+from pandahandler.frames.types import DfTransform
 
 
 def _get_default_logger() -> logging.Logger:
@@ -22,7 +22,9 @@ def _get_default_logger() -> logging.Logger:
     return logging.getLogger(module.__name__)
 
 
-def log_rowcount_change(*args: FunType, logger: logging.Logger | None = None, level: int = logging.INFO) -> Callable:
+def log_rowcount_change(
+    *args: DfTransform, logger: logging.Logger | None = None, level: int = logging.INFO
+) -> Callable:
     """Log the change in the number of rows of a data frame processed by func.
 
     Args:
@@ -33,7 +35,7 @@ def log_rowcount_change(*args: FunType, logger: logging.Logger | None = None, le
     """
     logger = logger or _get_default_logger()
 
-    def decorator(func: FunType) -> FunType:
+    def decorator(func: DfTransform) -> DfTransform:
         def wrapper(df: pd.DataFrame, *args, **kwargs):
             # Don't bother to compute logging inputs if the logging level so high that nothing would get logged:
             if not logger.isEnabledFor(level):
