@@ -5,9 +5,11 @@ import pytest
 
 from pandahandler.frames.decorators.framesize import log_rowcount_change
 
+logger = logging.getLogger(__name__)
+
 
 def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
-    @log_rowcount_change
+    @log_rowcount_change(logger=logger)
     def double(df: pd.DataFrame) -> pd.DataFrame:
         return pd.concat([df, df], axis=0)
 
@@ -15,11 +17,11 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     def add_row(df: pd.DataFrame) -> pd.DataFrame:
         return pd.concat([df, df.iloc[[0]]], axis=0)
 
-    @log_rowcount_change
+    @log_rowcount_change(logger=logger)
     def no_change(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
-    @log_rowcount_change(level=logging.WARN)
+    @log_rowcount_change(logger=logger, level=logging.WARN)
     def filter_smalls(df: pd.DataFrame) -> pd.DataFrame:
         return df.loc[df["a"] > 1]
 
@@ -27,7 +29,7 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     with caplog.at_level(logging.INFO):
         caplog.clear()
         double(df)
-        assert caplog.text.startswith("INFO     test_framesize:framesize.py")
+        assert caplog.text.startswith("INFO     test_framesize:test_framesize.py")
         assert caplog.text.endswith("double returned 6 rows, up 3 rows (100.0%).\n")
 
         caplog.clear()
@@ -37,7 +39,7 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
         caplog.clear()
         df2 = pd.concat([df, df.iloc[[0]]], axis=0)
         add_row(df2)
-        assert caplog.text.startswith("INFO     my_test:framesize.py")
+        assert caplog.text.startswith("INFO     my_test:test_framesize.py")
         assert caplog.text.endswith("add_row returned 5 rows, up 1 rows (25.0%).\n")
 
     with caplog.at_level(logging.CRITICAL):
@@ -50,5 +52,5 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
         # But at INFO level, the decorator should of course log:
         caplog.clear()
         filter_smalls(df)
-        assert caplog.text.startswith("WARNING  test_framesize:framesize.py")
+        assert caplog.text.startswith("WARNING  test_framesize:test_framesize.py")
         assert caplog.text.endswith("filter_smalls returned 2 rows, down 1 rows (-33.3%).\n")
