@@ -25,4 +25,9 @@ def test_safe_hstack():
     df1 = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
     df2 = pd.DataFrame({"c": [7, 8, 9], "d": [10, 11, 12]})
     df = joiners.safe_hstack([df1, df2])
-    assert df.equals(pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9], "d": [10, 11, 12]}))
+    expected_df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6], "c": [7, 8, 9], "d": [10, 11, 12]})
+    pd.testing.assert_frame_equal(df, expected_df)
+
+    # should also be fine with a single frame:
+    df = joiners.safe_hstack([df1])
+    pd.testing.assert_frame_equal(df, df1)
