@@ -98,7 +98,7 @@ def test_unset() -> None:
 
     # Any index operation on a df where a column name of the existing index matches the name of any non-index column
     # should raise an error:
-    with pytest.raises(ValueError, match="index column names match the names of non-index columns: {'cats'}"):
+    with pytest.raises(ValueError, match="cannot insert cats, already exists"):
         unset(df)
 
     # But we can rename the index and then unset it

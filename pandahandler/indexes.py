@@ -45,7 +45,15 @@ def _assert_index_vs_cols_disjoint(df: pd.DataFrame) -> None:
 
 
 def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
-    """Safely convert the columns of a data frame's index to regular columns.
+    """Safely unset the index.
+
+    Details:
+    - This is more an "unset" than a "reset" in the sense that it makes the index as trivial as possible. If we
+        could totally remove the index of the data frame, that's what this function would do, but the unnamed
+        range index is the next closest thing.
+    - This is "safe" in the sense that it will not drop any existing data encoded in the index. (We assume that an
+        unnamed range index does not count as "data" in this context.) Existing index columns get converted to
+        regular columns in the data frame.
 
     Args:
         df: The data frame to unset the index on.
@@ -58,8 +66,8 @@ def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
 
     Raises:
         ValueError: If the data frame column names overlap with the index names.
-        ValueError: If all fo the following apply:
-          - require_names is True
+        ValueError: If all of the following apply:
+          - require_names is True (the default)
           - the index is unnamed
           - the index is not a trivial RangeIndex
 
@@ -75,8 +83,7 @@ def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
             "Please set the names of the index columns before calling unset, or just call reset_index(drop=True) "
             "directly."
         )
-    _assert_index_vs_cols_disjoint(df)
-    return df.reset_index(drop=False)
+    return df.reset_index(drop=False, allow_duplicates=False)
 
 
 @frozen
