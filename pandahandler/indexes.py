@@ -8,6 +8,11 @@ from attrs import field, frozen
 from pandas.core.indexes.frozen import FrozenList
 
 
+def index_has_any_unnamed_col(index: pd.Index) -> bool:
+    """Check if the index has any unnamed columns."""
+    return any(name is None for name in index.names)
+
+
 def is_unnamed_range_index(index: pd.Index) -> bool:
     """Assert that the index is trivial, i.e. equal to the default RangeIndex."""
     if index.name is not None:
@@ -39,14 +44,24 @@ def _assert_index_vs_cols_disjoint(df: pd.DataFrame) -> None:
         raise ValueError(f"{msg}: {column_name_overlap}.")
 
 
-def unset(df: pd.DataFrame) -> pd.DataFrame:
-    """Safely convert the columns of the data frame index to regular columns.
+def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
+    """Safely convert the columns of a data frame's index to regular columns.
 
     Args:
         df: The data frame to unset the index on.
+        require_names: Whether to raise an error if the existing index is unnamed:
+          - This setting is ignored whenever the index is an unnamed RangeIndex.
+          - With require_names=False, a unnamed index typically is converted to a new column called "index".
+          - Using require_names=True (default) forces users to declare how to handle an unnamed index. Either:
+            - Call reset_index(drop=True) directly to drop the index instead of calling this function.
+            - Set the name(s) of the index prior to calling this function.
 
     Raises:
         ValueError: If the data frame column names overlap with the index names.
+        ValueError: If all fo the following apply:
+          - require_names is True
+          - the index is unnamed
+          - the index is not a trivial RangeIndex
 
     Returns:
         A copy of the input data frame with the index columns reset as regular columns. The new index is
@@ -54,6 +69,12 @@ def unset(df: pd.DataFrame) -> pd.DataFrame:
     """
     if is_unnamed_range_index(df.index):
         return df
+    if require_names and index_has_any_unnamed_col(df.index):
+        raise ValueError(
+            "At least one column of the index is unnamed while the index itself is not a RangeIndex. "
+            "Please set the names of the index columns before calling unset, or just call reset_index(drop=True) "
+            "directly."
+        )
     _assert_index_vs_cols_disjoint(df)
     return df.reset_index(drop=False)
 

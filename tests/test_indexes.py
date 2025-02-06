@@ -3,7 +3,23 @@
 import pandas as pd
 import pytest
 
-from pandahandler.indexes import Index, is_unnamed_range_index, unset
+from pandahandler.indexes import Index, index_has_any_unnamed_col, is_unnamed_range_index, unset
+
+
+def test_index_has_any_unnamed_col():
+    df = pd.DataFrame({"a": [1, 2, 3]})
+    assert index_has_any_unnamed_col(df.index)
+
+    df.index.name = "blah"
+    assert not index_has_any_unnamed_col(df.index)
+
+    # multi-index case:
+    df = pd.DataFrame({"a": [1, 2]}, index=pd.MultiIndex.from_tuples([("a", "b"), ("c", "d")]))
+    assert index_has_any_unnamed_col(df.index)
+    df.index.names = ["blah", None]
+    assert index_has_any_unnamed_col(df.index)
+    df.index.names = ["blah", "blah"]
+    assert not index_has_any_unnamed_col(df.index)
 
 
 def test_is_unnamed_range_index():
@@ -92,3 +108,18 @@ def test_unset() -> None:
     # Running the operation again should not change anything since df already has a range index:
     dfx = unset(df)
     pd.testing.assert_frame_equal(dfx, df)
+
+    # Now let's test the require_names parameter: expecting a value error if the index is unnamed but not a RangeIndex:
+    df = pd.DataFrame(
+        {
+            "cats": ["siamese", "little", "persian"],
+            "timestamp": ["2021-01-01", "2021-01-02", None],
+        },
+        index=pd.Index(["a", "b", "c"]),
+    )
+    msg = "At least one column of the index is unnamed while the index itself is not a RangeIndex"
+    with pytest.raises(ValueError, match=msg):
+        unset(df)
+    # but we can override that:
+    dfx = unset(df, require_names=False)
+    assert "index" in dfx
