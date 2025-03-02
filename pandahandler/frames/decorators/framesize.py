@@ -2,12 +2,19 @@
 
 import functools
 import logging
-from typing import Callable, TypeAlias
+from typing import Callable
 
 import pandas as pd
 from sigfig import round as sround
 
-FunType: TypeAlias = Callable[[pd.DataFrame], pd.DataFrame]
+from pandahandler.frames.constants import DataframeToDataframe
+
+
+def _get_function_name(func: DataframeToDataframe, *args, **kwargs) -> str:
+    """Default method to describe the wrapped function."""
+    del args
+    del kwargs
+    return func.__name__
 
 
 def log_rowcount_change(
@@ -16,7 +23,8 @@ def log_rowcount_change(
     stacklevel: int = 2,
     allow_empty_input: bool = True,
     allow_empty_output: bool = True,
-) -> Callable:
+    describe_func: Callable[..., str] = _get_function_name,
+) -> Callable[[DataframeToDataframe], DataframeToDataframe]:
     """Log the change in the number of rows of a data frame processed by func.
 
     Args:
@@ -29,13 +37,16 @@ def log_rowcount_change(
             2 (default): the log message shows the line number of the call to the decorated function.
         allow_empty_input: If False, raise an exception if the input data frame is empty.
         allow_empty_output: If False, raise an exception if the output data frame is empty.
+        describe_func: A function that takes the decorated function and its arguments and returns a string description
+            of the function. The default implementation returns the function's name.
 
     Raises:
         ValueError: If the input data frame is empty and allow_empty_input is False.
         RuntimeError: If the output data frame is empty and allow_empty_output is False.
     """
 
-    def decorator(func: FunType) -> FunType:
+    def decorator(func: DataframeToDataframe) -> DataframeToDataframe:
+        @functools.wraps(func)
         def wrapper(df: pd.DataFrame, *args, **kwargs):
             # Don't bother to compute logging inputs if the logging level so high that nothing would get logged:
             if not logger.isEnabledFor(level):
@@ -44,13 +55,7 @@ def log_rowcount_change(
             logfunc = functools.partial(logger.log, level=level, stacklevel=stacklevel)
             n_input = len(df)
 
-            # Identify func
-            func_name = func.__name__
-            if func_name == "apply_mask":
-                assert "name" in kwargs, "apply_mask must be called with a 'name' keyword argument."
-                mask_name = kwargs["name"]
-                func_name = f"{func_name}:{mask_name}"
-
+            func_name = describe_func(func, *args, **kwargs)
             if not allow_empty_input and df.empty:
                 raise ValueError(f"{func_name} received an empty data frame but allow_empty_input is False.")
 
