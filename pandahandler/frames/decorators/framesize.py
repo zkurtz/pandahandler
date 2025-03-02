@@ -44,25 +44,32 @@ def log_rowcount_change(
             logfunc = functools.partial(logger.log, level=level, stacklevel=stacklevel)
             n_input = len(df)
 
+            # Identify func
+            func_name = func.__name__
+            if func_name == "apply_mask":
+                assert "name" in kwargs, "apply_mask must be called with a 'name' keyword argument."
+                mask_name = kwargs["name"]
+                func_name = f"{func_name}:{mask_name}"
+
             if not allow_empty_input and df.empty:
-                raise ValueError(f"{func.__name__} received an empty data frame but allow_empty_input is False.")
+                raise ValueError(f"{func_name} received an empty data frame but allow_empty_input is False.")
 
             df = func(df, *args, **kwargs)
             n_output = len(df)
 
             if df.empty:
                 if not allow_empty_output:
-                    raise RuntimeError(f"{func.__name__} produced an empty data frame but allow_empty_output is False.")
-                logfunc(msg=f"{func.__name__} returned an empty data frame.")
+                    raise RuntimeError(f"{func_name} produced an empty data frame but allow_empty_output is False.")
+                logfunc(msg=f"{func_name} returned an empty data frame.")
                 return df
 
             n_delta = n_output - n_input
             if n_delta == 0:
-                logfunc(msg=f"{func.__name__} did not affect the row count.")
+                logfunc(msg=f"{func_name} did not affect the row count.")
                 return df
             pct_delta = sround((n_delta / n_input) * 100, sigfigs=3, warning=False)
             delta_str = "down" if n_delta <= 0 else "up"
-            logfunc(msg=f"{func.__name__} returned {n_output} rows, {delta_str} {abs(n_delta)} rows ({pct_delta}%).")
+            logfunc(msg=f"{func_name} returned {n_output} rows, {delta_str} {abs(n_delta)} rows ({pct_delta}%).")
             return df
 
         return wrapper
