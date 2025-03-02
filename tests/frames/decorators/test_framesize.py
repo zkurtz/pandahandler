@@ -25,7 +25,17 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     def filter_smalls(df: pd.DataFrame) -> pd.DataFrame:
         return df.loc[df["a"] > 1]
 
+    @log_rowcount_change(logger=logger)
+    def drop_all_rows(df: pd.DataFrame) -> pd.DataFrame:
+        return df.iloc[0:0]
+
+    @log_rowcount_change(logger=logger, allow_empty_input=False, allow_empty_output=False)
+    def drop_all_rows_strict(df: pd.DataFrame) -> pd.DataFrame:
+        ret = df.iloc[0:0]
+        return ret
+
     df = pd.DataFrame({"a": [1, 2, 3]})
+
     with caplog.at_level(logging.INFO):
         caplog.clear()
         double(df)
@@ -54,3 +64,17 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
         filter_smalls(df)
         assert caplog.text.startswith("WARNING  test_framesize:test_framesize.py")
         assert caplog.text.endswith("filter_smalls returned 2 rows, down 1 rows (-33.3%).\n")
+
+    with caplog.at_level(logging.INFO):
+        msg = "drop_all_rows_strict received an empty data frame but allow_empty_input is False"
+        with pytest.raises(ValueError, match=msg):
+            drop_all_rows_strict(df.iloc[0:0])
+
+        msg = "drop_all_rows_strict produced an empty data frame but allow_empty_output is False"
+        with pytest.raises(RuntimeError, match=msg):
+            drop_all_rows_strict(df)
+
+    with caplog.at_level(logging.INFO):
+        caplog.clear()
+        drop_all_rows(df)
+        assert caplog.text.endswith("drop_all_rows returned an empty data frame.\n")
