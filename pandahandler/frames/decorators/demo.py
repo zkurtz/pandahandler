@@ -8,7 +8,7 @@ import logging
 
 import pandas as pd
 
-from pandahandler.frames.filters import drop_if_any_null
+from pandahandler.frames.filtering.filters import drop_if_any_null
 
 
 def _filtering() -> None:
