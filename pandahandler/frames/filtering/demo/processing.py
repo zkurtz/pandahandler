@@ -18,7 +18,7 @@ from pandahandler.frames.filtering import filters, masks, masktools
 logger = logging.getLogger(__name__)
 
 
-def main() -> None:
+def process() -> None:
     """Demonstrate usage of filtering tools."""
     df = pd.DataFrame({"a": [1, 2, 3], "b": [4, 5, 6]})
     my_mask_series = masks.my_mask(df)
@@ -28,8 +28,3 @@ def main() -> None:
     result3 = filters.my_mask_filter(df)
     assert result1.equals(result2), "apply_mask should work with both precomputed masks and mask functions."
     assert result1.equals(result3), "The filter should produce the same result as apply_mask"
-
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    main()

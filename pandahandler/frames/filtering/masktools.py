@@ -35,7 +35,6 @@ def _apply_mask(df: pd.DataFrame, mask: pd.Series) -> pd.DataFrame:
 
 
 @log_rowcount_change(
-    logger=logger,
     describe_func=_describe_mask_filter,
 )
 def apply_mask(df: pd.DataFrame, *, mask: pd.Series | DataframeToSeries, name: str = "unnamed_mask") -> pd.DataFrame:
@@ -52,7 +51,7 @@ def apply_mask(df: pd.DataFrame, *, mask: pd.Series | DataframeToSeries, name: s
     return _apply_mask(df, mask)
 
 
-def as_filter(mask_func: DataframeToSeries, **kwargs) -> DataframeToDataframe:
+def as_filter(mask_func: DataframeToSeries, logger: logging.Logger = logger, **kwargs) -> DataframeToDataframe:
     """Convert a mask function to a filter function.
 
     Typically users should define masks as standalone functions and then use this decorator to convert them to filters.
@@ -66,14 +65,12 @@ def as_filter(mask_func: DataframeToSeries, **kwargs) -> DataframeToDataframe:
 
     Args:
         mask_func: A function that accepts a data frame and returns a boolean series with the same index.
+        logger: The logger to use for logging row count changes.
         **kwargs: Additional keyword arguments to pass to log_rowcount_change.
 
     Returns:
         A function that accepts a data frame and returns a data frame, where the rows are filtered by the mask.
     """
-    kwargs = kwargs.copy()
-    if "logger" not in kwargs:
-        kwargs["logger"] = logger
 
     @log_rowcount_change(**kwargs)
     @functools.wraps(mask_func)

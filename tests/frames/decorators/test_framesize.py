@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
-    @log_rowcount_change(logger=logger)
+    @log_rowcount_change
     def double(df: pd.DataFrame) -> pd.DataFrame:
         return pd.concat([df, df], axis=0)
 
@@ -21,15 +21,15 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     def no_change(df: pd.DataFrame) -> pd.DataFrame:
         return df
 
-    @log_rowcount_change(logger=logger, level=logging.WARN)
+    @log_rowcount_change(level=logging.WARN)
     def filter_smalls(df: pd.DataFrame) -> pd.DataFrame:
         return df.loc[df["a"] > 1]
 
-    @log_rowcount_change(logger=logger)
+    @log_rowcount_change()
     def drop_all_rows(df: pd.DataFrame) -> pd.DataFrame:
         return df.iloc[0:0]
 
-    @log_rowcount_change(logger=logger, allow_empty_input=False, allow_empty_output=False)
+    @log_rowcount_change(allow_empty_input=False, allow_empty_output=False)
     def drop_all_rows_strict(df: pd.DataFrame) -> pd.DataFrame:
         ret = df.iloc[0:0]
         return ret
