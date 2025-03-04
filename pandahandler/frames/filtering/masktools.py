@@ -1,14 +1,11 @@
 """Defining data frame filters in terms of masks."""
 
 import functools
-import logging
 
 import pandas as pd
 
 from pandahandler.frames.constants import DataframeToDataframe, DataframeToSeries
 from pandahandler.frames.decorators.framesize import log_rowcount_change
-
-logger = logging.getLogger(__name__)
 
 
 def _describe_mask_filter(func: DataframeToDataframe, *args, **kwargs) -> str:
@@ -34,9 +31,7 @@ def _apply_mask(df: pd.DataFrame, mask: pd.Series) -> pd.DataFrame:
     return df.loc[mask]
 
 
-@log_rowcount_change(
-    describe_func=_describe_mask_filter,
-)
+@log_rowcount_change(describe_func=_describe_mask_filter)
 def apply_mask(df: pd.DataFrame, *, mask: pd.Series | DataframeToSeries, name: str = "unnamed_mask") -> pd.DataFrame:
     """Apply a mask to filter a data frame.
 
@@ -51,7 +46,7 @@ def apply_mask(df: pd.DataFrame, *, mask: pd.Series | DataframeToSeries, name: s
     return _apply_mask(df, mask)
 
 
-def as_filter(mask_func: DataframeToSeries, logger: logging.Logger = logger, **kwargs) -> DataframeToDataframe:
+def as_filter(mask_func: DataframeToSeries, **kwargs) -> DataframeToDataframe:
     """Convert a mask function to a filter function.
 
     Typically users should define masks as standalone functions and then use this decorator to convert them to filters.
@@ -65,7 +60,6 @@ def as_filter(mask_func: DataframeToSeries, logger: logging.Logger = logger, **k
 
     Args:
         mask_func: A function that accepts a data frame and returns a boolean series with the same index.
-        logger: The logger to use for logging row count changes.
         **kwargs: Additional keyword arguments to pass to log_rowcount_change.
 
     Returns:
