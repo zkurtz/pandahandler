@@ -1,8 +1,9 @@
 """Function decorators for functions that accept a data frame and return a data frame."""
 
 import functools
+import inspect
 import logging
-from typing import Callable
+from typing import Any, Callable, cast
 
 import pandas as pd
 from sigfig import round as sround
@@ -17,20 +18,55 @@ def _get_function_name(func: DataframeToDataframe, *args, **kwargs) -> str:
     return func.__name__
 
 
+def get_stack_modules(max_num_levels: int) -> list[str]:
+    """Get the list of module names from the call stack.
+
+    Args:
+        max_num_levels: Number of levels to traverse up the call stack.
+
+    Returns:
+        list: Module names in order from current frame (index 0) up to max_num_levels.
+    """
+    stack = inspect.stack()
+    num_levels = min(max_num_levels, len(stack))
+    stack = stack[:num_levels]
+    modules = []
+    try:
+        for item in stack:
+            module = inspect.getmodule(item.frame)
+            module_name = module.__name__ if module else "<unknown>"
+            modules.append(module_name)
+    finally:
+        # Explicitly delete references to frame objects to avoid reference cycles
+        del stack
+
+    return modules
+
+
 def log_rowcount_change(
-    logger: logging.Logger,
+    func: DataframeToDataframe | None = None,
+    *,
+    logger: logging.Logger | None = None,
     level: int = logging.INFO,
     stacklevel: int = 2,
     allow_empty_input: bool = True,
     allow_empty_output: bool = True,
     describe_func: Callable[..., str] = _get_function_name,
-) -> Callable[[DataframeToDataframe], DataframeToDataframe]:
+    # Return type should be Callable[[DataframeToDataframe], DataframeToDataframe] | DataframeToDataframe, but
+    # pyright is not buying it.
+) -> Any:
     """Log the change in the number of rows of a data frame processed by func.
 
+    This decorator can be used with or without arguments:
+        @log_rowcount_change
+        def my_func(df): ...
+
+        @log_rowcount_change(level=logging.DEBUG)
+        def my_func(df): ...
+
     Args:
-        args: If provided, the function to decorate. If not provided, the decorator is being called with arguments,
-            as a decorator factory, so it returns the actual decorator.
-        logger: The logger to use. If None, the logger for the calling module is used.
+        func: The function to decorate (when used without parentheses).
+        logger: The logger to use. If None, the logger for the module calling the decorated function is used.
         level: The logging level to use, defaulting to INFO.
         stacklevel: Passed into the logger.log call:
             1: The log message shows the line number of the logging call inside the decorator itself.
@@ -45,14 +81,21 @@ def log_rowcount_change(
         RuntimeError: If the output data frame is empty and allow_empty_output is False.
     """
 
-    def decorator(func: DataframeToDataframe) -> DataframeToDataframe:
+    def create_decorator(func: DataframeToDataframe) -> DataframeToDataframe:
         @functools.wraps(func)
         def wrapper(df: pd.DataFrame, *args, **kwargs):
+            # Resolve what logger to use
+            if logger:
+                _logger = logger
+            else:
+                modules_stack = get_stack_modules(stacklevel + 1)
+                _logger = logging.getLogger(modules_stack[-1])
+
             # Don't bother to compute logging inputs if the logging level so high that nothing would get logged:
-            if not logger.isEnabledFor(level):
+            if not _logger.isEnabledFor(level):
                 return func(df, *args, **kwargs)
 
-            logfunc = functools.partial(logger.log, level=level, stacklevel=stacklevel)
+            logfunc = functools.partial(_logger.log, level=level, stacklevel=stacklevel)
             n_input = len(df)
 
             func_name = describe_func(func, *args, **kwargs)
@@ -77,6 +120,11 @@ def log_rowcount_change(
             logfunc(msg=f"{func_name} returned {n_output} rows, {delta_str} {abs(n_delta)} rows ({pct_delta}%).")
             return df
 
-        return wrapper
+        return cast(DataframeToDataframe, wrapper)
 
-    return decorator
+    # Check if called directly with a function
+    if func is not None:
+        return create_decorator(func)
+
+    # Otherwise, return a decorator
+    return create_decorator
