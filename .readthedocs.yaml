@@ -4,6 +4,9 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.12"
+  commands:
+    - cd docs && sphinx-apidoc -o api -e -f ../pandahandler
+    - cd docs && make html
 
 python:
   install:
@@ -13,3 +16,4 @@ python:
 
 sphinx:
   configuration: docs/conf.py
+  fail_on_warning: false
