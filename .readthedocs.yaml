@@ -5,8 +5,8 @@ build:
   tools:
     python: "3.12"
   commands:
+    - pip install sphinx sphinx-rtd-theme
     - cd docs && sphinx-apidoc -o api -e -f ../pandahandler
-    - cd docs && make html
 
 python:
   install:
