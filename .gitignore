@@ -17,3 +17,16 @@ venv*
 *.toc
 *.tmp
 dev*
+
+# Sphinx documentation builds
+docs/_build/
+docs/build/
+docs/html/
+docs/api/
+docs/_autosummary/
+.doctrees/
+docs/.doctrees/
+*.doctree
+docs/*stamp
+*.mo
+*.pot
