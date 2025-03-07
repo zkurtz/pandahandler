@@ -26,6 +26,7 @@ docs/api/
 docs/_autosummary/
 .doctrees/
 docs/.doctrees/
+docs/doctrees/
 *.doctree
 docs/*stamp
 *.mo
