@@ -7,13 +7,10 @@ build:
   commands:
     - pip install sphinx sphinx-rtd-theme
     - cd docs && sphinx-apidoc -o api -e -f ../pandahandler
+    - cd docs && sphinx-build -b html . $READTHEDOCS_OUTPUT/html
 
 python:
   install:
     - method: pip
       path: .
     - requirements: docs/requirements.txt
-
-sphinx:
-  configuration: docs/conf.py
-  fail_on_warning: false
