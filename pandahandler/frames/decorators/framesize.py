@@ -18,7 +18,7 @@ def _get_function_name(func: DataframeToDataframe, *args, **kwargs) -> str:
     return func.__name__
 
 
-def get_stack_modules(max_num_levels: int) -> list[str]:
+def _get_stack_modules(max_num_levels: int) -> list[str]:
     """Get the list of module names from the call stack.
 
     Args:
@@ -88,7 +88,7 @@ def log_rowcount_change(
             if logger:
                 _logger = logger
             else:
-                modules_stack = get_stack_modules(stacklevel + 1)
+                modules_stack = _get_stack_modules(stacklevel + 1)
                 _logger = logging.getLogger(modules_stack[-1])
 
             # Don't bother to compute logging inputs if the logging level so high that nothing would get logged:
