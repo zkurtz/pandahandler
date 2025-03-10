@@ -7,6 +7,13 @@ from attr.validators import min_len
 from attrs import field, frozen
 from pandas.core.indexes.frozen import FrozenList
 
+__all__ = [
+    "Index",
+    "assert_no_nulls",
+    "is_unnamed_range_index",
+    "unset",
+]
+
 
 def index_has_any_unnamed_col(index: pd.Index) -> bool:
     """Check if the index has any unnamed columns."""
@@ -48,21 +55,24 @@ def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
     """Safely unset the index.
 
     Details:
-    - This is more an "unset" than a "reset" in the sense that it makes the index as trivial as possible. If we
-        could totally remove the index of the data frame, that's what this function would do, but the unnamed
-        range index is the next closest thing.
-    - This is "safe" in the sense that it will not drop any existing data encoded in the index. (We assume that an
-        unnamed range index does not count as "data" in this context.) Existing index columns get converted to
-        regular columns in the data frame.
+
+    * This is more an "unset" than a "reset" in the sense that it makes the index as trivial as possible. If we
+      could totally remove the index of the data frame, that's what this function would do, but the unnamed
+      range index is the next closest thing.
+    * This is "safe" in the sense that it will not drop any existing data encoded in the index. (We assume that an
+      unnamed range index does not count as "data" in this context.) Existing index columns get converted to
+      regular columns in the data frame.
 
     Args:
         df: The data frame to unset the index on.
         require_names: Whether to raise an error if the existing index is unnamed:
-          - This setting is ignored whenever the index is an unnamed RangeIndex.
-          - With require_names=False, a unnamed index typically is converted to a new column called "index".
-          - Using require_names=True (default) forces users to declare how to handle an unnamed index. Either:
-            - Call reset_index(drop=True) directly to drop the index instead of calling this function.
-            - Set the name(s) of the index prior to calling this function.
+
+          * This setting is ignored whenever the index is an unnamed RangeIndex.
+          * With require_names=False, a unnamed index typically is converted to a new column called "index".
+          * Using require_names=True (default) forces users to declare how to handle an unnamed index. Either:
+
+            * Call reset_index(drop=True) directly to drop the index instead of calling this function.
+            * Set the name(s) of the index prior to calling this function.
 
     Raises:
         ValueError: If the data frame column names overlap with the index names.
@@ -91,25 +101,38 @@ class Index:
     """A functional wrapper around pandas indexes.
 
     An instance of this class can be used to simplify the following types of operations:
-    - Coercing an input data frame to have a particular index.
-    - Enforcing or ensuring various index properties such as monotonicity or uniqueness.
-    - Unset and reset indexes cleanly before and after operations that require columnar access to index columns.
+
+    * Coercing an input data frame to have a particular index.
+    * Enforcing or ensuring various index properties such as monotonicity or uniqueness.
+    * Unset and reset indexes cleanly before and after operations that require columnar access to index columns.
 
     This class applies both for pandas.Index and MultiIndex objects to reduce the amount of special-casing needed based
     on the number of columns in the index.
 
-    Attributes:
-        names: The names of the columns of the index.
-        allow_null: Whether to allow null values in the index. Applicable only for single-column indexes, since pandas
-            does not support null values in a MultiIndex.
-        sort: Whether to sort the index.
-        require_unique: Whether the index should be unique
+    Example:
+        .. code-block:: python
+
+            # Set an index with sorting
+            df = pd.DataFrame({"a": [1, 3, 2], "b": [4, 5, 6]})
+            index = Index(names=["a"], sort=True)
+            df = index(df)
+            assert df.index.tolist() == [1, 2, 3]
+
+            # Switch over to another column as the index
     """
 
     names: FrozenList = field(converter=FrozenList, validator=min_len(1))
+    """The names of the columns of the index."""
+
     allow_null: bool = field(default=False, kw_only=True)
+    """Whether to allow null values in the index. Applicable only for single-column indexes, since pandas does not
+    support null values in a MultiIndex."""
+
     sort: bool = field(default=False, kw_only=True, validator=_validate_sort_vs_null)
+    """Whether to sort the index."""
+
     require_unique: bool = field(default=True, kw_only=True)
+    """Whether to require the index to be unique. E.g. if True, raise an error if the index is not unique."""
 
     def __call__(self, df: pd.DataFrame, **kwargs: Any) -> pd.DataFrame:
         """Set the index on the data frame.

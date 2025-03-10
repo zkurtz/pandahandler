@@ -2,6 +2,10 @@
 
 import pandas as pd
 
+__all__ = [
+    "safe_hstack",
+]
+
 
 def safe_hstack(frames: list[pd.DataFrame]) -> pd.DataFrame:
     """Horizontally concatenate (i.e. axis=1) data frames after asserting strong assumptions.
@@ -9,8 +13,9 @@ def safe_hstack(frames: list[pd.DataFrame]) -> pd.DataFrame:
     The naming of this method suggests an apt analogy with numpy's `hstack` function, which horizontally stacks
     arrays. This method is a convenience wrapper around `pd.concat` that includes the following assertions about the
     inputs frames:
-      - all data frames must share the same index
-      - there is no overlap among the columns of the data frames (ignoring the indexes)
+
+    * all data frames must share the same index
+    * there is no overlap among the columns of the data frames (ignoring the indexes)
 
     Args:
         frames: The data frames to concatenate.
