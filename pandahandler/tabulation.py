@@ -1,33 +1,38 @@
 """Univariate data tabulation."""
 
-from dataclasses import dataclass
 from functools import cached_property
 from typing import Hashable, Iterable
 
 import pandas as pd
+from attrs import define
 from typing_extensions import Self
+
+__all__ = [
+    "Tabulation",
+    "tabulate",
+]
 
 NAME = "name"
 RATE = "rate"
 
 
-@dataclass(kw_only=True)
+@define(kw_only=True)
 class Tabulation:
-    """Counts and associated metadata for a univariate data set.
-
-    Attributes:
-        counts: The table of counts
-        name: A name for the data set being tabulated
-        n_values: The number of values in the input series
-        n_distinct: The number of distinct values in the input series (i.e. the number of rows in `df`)
-    """
+    """Counts and associated metadata for a univariate data set."""
 
     counts: pd.Series
-    name: str | None = None
-    n_values: int
-    n_distinct: int
+    """The table of counts."""
 
-    def __post_init__(self):
+    name: str | None = None
+    """A name for the data set being tabulated."""
+
+    n_values: int
+    """The number of values in the input series."""
+
+    n_distinct: int
+    """The number of distinct values in the input series (i.e. the number of rows in `df`)."""
+
+    def __attrs_post_init__(self):
         """Data validation.
 
         Raises:

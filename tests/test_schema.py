@@ -2,7 +2,7 @@ import pandas as pd
 import pytest
 from pandas.errors import IntCastingNaNError
 
-from pandahandler import Schema, categorize_non_numerics
+from pandahandler.schema import Schema, categorize_non_numerics
 
 
 def test_schema():

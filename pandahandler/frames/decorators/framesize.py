@@ -10,6 +10,8 @@ from sigfig import round as sround
 
 from pandahandler.frames.constants import DataframeToDataframe
 
+__all__ = ["log_rowcount_change"]
+
 
 def _get_function_name(func: DataframeToDataframe, *args, **kwargs) -> str:
     """Default method to describe the wrapped function."""
@@ -58,16 +60,21 @@ def log_rowcount_change(
     """Log the change in the number of rows of a data frame processed by func.
 
     This decorator can be used with or without arguments:
-        @log_rowcount_change
-        def my_func(df): ...
 
-        @log_rowcount_change(level=logging.DEBUG)
-        def my_func(df): ...
+        .. code-block:: python
+
+            @log_rowcount_change
+            def my_func(df): ...
+
+            @log_rowcount_change(level=logging.DEBUG)
+            def my_func(df): ...
 
     Args:
         func: The function to decorate (when used without parentheses).
         logger: The logger to use. If None, the logger for the module calling the decorated function is used.
-        level: The logging level to use, defaulting to INFO.
+        level: The logging level to use, defaulting to INFO. Note that this sets the logging level for your decorator,
+            NOT the logger. For example, if you set level=logging.DEBUG, the decorator will log only when the logger is
+            set to DEBUG or lower.
         stacklevel: Passed into the logger.log call:
             1: The log message shows the line number of the logging call inside the decorator itself.
             2 (default): the log message shows the line number of the call to the decorated function.

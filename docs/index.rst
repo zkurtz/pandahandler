@@ -1,5 +1,5 @@
 pandahandler reference guide
-==========================
+============================
 
 - pandahandler is collection of utilities for working with pandas objects.
 - We're `on pypi <https://pypi.org/project/pandahandler/>`_, so ``pip install pandahandler``
@@ -18,3 +18,10 @@ Here's an overview of the main features. Click on the links for detailed API doc
 * :func:`pandahandler.frames.joiners.safe_hstack` - safe/strict horizontal concatenation of data frames. Calling ``safe_hstack([df1, df2, df3])`` is much like ``pd.concat([df1, df2, df3])`` but first guarantees that (a) the columns of the input data frames are disjoint, and (b) the row-indexes of the input data frames are identical, raising helpful error messages if these conditions are not met.
 * :func:`pandahandler.indexes.unset` - unsets the index of a data frame as safely as possible, converting any existing index columns to regular columns while (a) asserting that no columns of the same name already exist on the frame and (b) reverting to a no-op in case the index is already an unnamed range index.
 * :class:`pandahandler.indexes.Index` - simplifies the process of declaring data frame indexes. A user can define an index as a constant to replace index setting/checking boilerplate in across any product-specific ecosystem.
+
+
+.. toctree::
+   :maxdepth: 3
+   :caption: Standard docs tree
+
+   autoapi/pandahandler/index

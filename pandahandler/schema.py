@@ -30,16 +30,15 @@ class Schema:
     Note that the categorical encodings attribute is important information that's not traditionally captured in
     "schema" information, although it is important for encoding any new data in a way that's consistent with training
     data for scoring in machine learning applications.
-
-    Attributes:
-        types_: The data types of the columns.
-        categorical_encodings: The categories of the categorical columns. The keys are the column names (for columns
-            of categorical type) and the values are index objects expressing the integeger-category mappings defining
-            that column's categorical encoding.
     """
 
     types_: pd.Series
+    """The data types of the columns."""
+
     categorical_encodings: dict[Hashable, pd.Index]
+    """The categories of the categorical columns. The keys are the column names (for columns of categorical type) and
+    the values are index objects expressing the integeger-category mappings defining that column's categorical encoding.
+    """
 
     def __post_init__(self):
         """Run consistency checks."""
