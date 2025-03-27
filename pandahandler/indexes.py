@@ -9,9 +9,28 @@ from pandas.core.indexes.frozen import FrozenList
 
 __all__ = [
     "Index",
+    "DuplicateValuesError",
     "is_unnamed_range_index",
     "unset",
 ]
+
+
+class DuplicateValuesError(ValueError):
+    """Raised when an index contains duplicate values."""
+
+    pass
+
+
+class NullValuesError(ValueError):
+    """Raised when an index contains null values."""
+
+    pass
+
+
+class DTypesError(ValueError):
+    """Raised when the dtypes of the index columns do not match the specified dtypes."""
+
+    pass
 
 
 def _get_dtypes(index: pd.Index) -> pd.Series:
@@ -138,42 +157,55 @@ class Index:
     dtypes: Mapping[str, Any] | None = None
     """The data types of the index columns."""
 
-    def _validate_dtypes(self, index: pd.Index, coerce_dtypes: bool = False) -> None:
+    def _validate_dtypes(self, index: pd.Index) -> None:
         """Assert that the provided index complies with this index specification."""
         if not self.dtypes:
-            if coerce_dtypes:
-                raise ValueError("coerce_dtypes is True but dtypes is not specified.")
             return
-        specified_dtypes = pd.Series(self.dtypes)
-        existing_dtypes = _get_dtypes(index)
-        if specified_dtypes.rename("").equals(existing_dtypes.rename("")):
-            return
-        # Since the types are not equal, let's raise a type error with details about which types are not matching:
-        types_df = pd.DataFrame({"specified": specified_dtypes, "existing": existing_dtypes})
+        types_df = pd.DataFrame(
+            {
+                "specified": pd.Series(self.dtypes),
+                "existing": _get_dtypes(index),
+            }
+        )
         mismatch_mask = types_df["specified"] != types_df["existing"]
         mismatch_df = types_df.loc[mismatch_mask]
-        raise TypeError(f"Index dtypes mismatch:\n{mismatch_df}")
+        if not mismatch_df.empty:
+            raise DTypesError(f"Index dtypes mismatch:\n{mismatch_df}")
+
+    def _validate_no_nulls(self, index: pd.Index) -> None:
+        """Assert that the provided index does not contain null values.
+
+        This needs to work for MultiIndex objects as well as single-column indexes.
+        """
+        if self.allow_null:
+            return
+        if isinstance(index, pd.MultiIndex):
+            for level, name in enumerate(index.names):
+                level_values = index.get_level_values(level)
+                if pd.isna(level_values).any():
+                    raise NullValuesError(f"The index has null values in level {name}.")
+        elif index.hasnans:
+            raise NullValuesError("The index has null values.")
 
     def validate(self, index: pd.Index, coerce_dtypes: bool = False) -> None:
         """Assert that the provided index complies with this index specification."""
         if not index.names == self.names:
             raise ValueError(f"Index names mismatch: {index.names} != {self.names}.")
         # Validate dtypes
-        self._validate_dtypes(index, coerce_dtypes)
+        self._validate_dtypes(index)
 
         # Validate uniqueness
         if self.require_unique and index.has_duplicates:
-            raise ValueError("The index has duplicate values.")
+            raise DuplicateValuesError("The index has duplicate values")
 
         # Validate no nulls
-        if not self.allow_null and index.hasnans:
-            raise ValueError("The index has null values.")
+        self._validate_no_nulls(index)
 
         # Validate sorting
         if self.sort and not index.is_monotonic_increasing:
             raise ValueError("The index is not sorted.")
 
-    def __call__(self, df: pd.DataFrame, coerce_dtypes: bool = False, **kwargs: Any) -> pd.DataFrame:
+    def __call__(self, df: pd.DataFrame, coerce_dtypes: bool = False) -> pd.DataFrame:
         """Set the index on the data frame.
 
         Any named columns of the current df index that are not part of the new index will be converted to new
@@ -182,7 +214,6 @@ class Index:
         Args:
             df: The data frame to set the index on.
             coerce_dtypes: Whether to coerce the types of the index columns to the specified dtypes.
-            **kwargs: Additional arguments to pass to the set_index method.
 
         Raises:
             ValueError: If the verify_integrity kwarg is inconsistent with the require_unique attribute.
@@ -190,18 +221,23 @@ class Index:
             ValueError: If coerce_dtypes is True and self.dtypes is None.
             ValueError: If coerce_dtypes is False and the input df.types do not match self.dtypes.
         """
+        if coerce_dtypes and not self.dtypes:
+            raise ValueError("coerce_dtypes is True but dtypes is not specified.")
+
         # This is a no-op if the existing index already matches the index specification:
         try:
             self.validate(df.index, coerce_dtypes=coerce_dtypes)
             return df
+        except (DuplicateValuesError, NullValuesError):
+            # If the error relates expectations that we can't fix by setting the index, let's fail fast:
+            raise
+        except DTypesError:
+            if coerce_dtypes:
+                pass
+            raise
         except ValueError:
+            # Other validation errors might be fixable by setting the index, so we continue
             pass
-
-        # resolve the verify_integrity argument in a way that's not inconsistent with the require_unique attribute:
-        verify_integrity = kwargs.get("verify_integrity", self.require_unique)
-        if verify_integrity is not self.require_unique:
-            raise ValueError("The verify_integrity argument must be consistent with the require_unique attribute.")
-        kwargs["verify_integrity"] = self.require_unique
 
         # unset any existing nontrivial index to retain the columns of any existing index as regular columns:
         df = unset(df)  # A no-op if the existing index is an unnamed RangeIndex
@@ -213,17 +249,11 @@ class Index:
             df = df.astype(self.dtypes)
 
         # set the index:
-        df = df.set_index(self.names, **kwargs)
-
-        # check nulls if applicable. Do this early, before sorting, to fail fast
-        if not self.allow_null and df.index.hasnans:
-            raise ValueError("The index has null values.")
+        df = df.set_index(keys=self.names)
 
         # sort if required
         if self.sort:
             df = df.sort_index()
-
-        self.validate(df.index, coerce_dtypes=coerce_dtypes)
         return df
 
     def assert_equal_names(self, index: pd.Index) -> None:

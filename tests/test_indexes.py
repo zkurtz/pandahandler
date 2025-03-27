@@ -1,9 +1,18 @@
 """Test index utilities."""
 
+import numpy as np
 import pandas as pd
 import pytest
 
-from pandahandler.indexes import Index, index_has_any_unnamed_col, is_unnamed_range_index, unset
+from pandahandler.indexes import (
+    DTypesError,
+    DuplicateValuesError,
+    Index,
+    NullValuesError,
+    index_has_any_unnamed_col,
+    is_unnamed_range_index,
+    unset,
+)
 
 
 def test_index_has_any_unnamed_col():
@@ -46,6 +55,33 @@ def test_is_unnamed_range_index():
 
 
 def test_index():
+    # test coerce_dtypes:
+    df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
+    # expect an error if coerce_dtypes is False while the dtypes are not conforming:
+    with pytest.raises(DTypesError, match="Index dtypes mismatch:\n"):
+        index = Index(names=["letters"], dtypes={"letters": float})
+        _ = index(df)
+    # Create index with category dtype
+    index = Index(names=["a"], dtypes={"a": "category"})
+    df = index(df, coerce_dtypes=True)
+    assert df.index.dtype == "category"
+    # expect an error if coerce_dtypes is True but dtypes is not specified:
+    index = Index(names=["a"])
+    with pytest.raises(ValueError, match="coerce_dtypes is True but dtypes is not specified."):
+        df = index(df, coerce_dtypes=True)
+
+    # test coercion involving datetimes that are formatted as strings:
+    df = pd.DataFrame(
+        {"dates": ["2021-01-01", "2021-01-02", "2021-01-03"]},
+        index=pd.Index([1, 2, 3.0], name="numbers"),
+    )
+    index = Index(
+        names=["dates", "numbers"],
+        dtypes={"numbers": np.int64, "dates": np.dtype("datetime64[ns]")},
+    )
+    dfc = index(df, coerce_dtypes=True)
+    index._validate_dtypes(index=dfc.index)
+
     df = pd.DataFrame(
         {
             "cats": ["siamese", "little", "persian"],
@@ -62,6 +98,7 @@ def test_index():
     NullTimestampIndex = Index(names=["timestamp"], allow_null=True)
     IdIndex = Index(names=["idcol"], sort=True)
     CatTimeIndex = Index(names=["cats", "timestamp"], allow_null=True)
+    CatTimeStrictIndex = Index(names=["cats", "timestamp"], allow_null=False, require_unique=True)
 
     df = CatIndex(df)
     assert df.index.names == ["cats"]
@@ -77,34 +114,25 @@ def test_index():
 
     df = NullTimestampIndex(df)
     assert df.index.names == ["timestamp"]
-
-    with pytest.raises(ValueError, match="The index has null values."):
+    with pytest.raises(NullValuesError, match="The index has null values."):
         df = TimestampIndex(df)
 
     df = CatTimeIndex(df)
     assert df.index.names == ["cats", "timestamp"]
+    with pytest.raises(NullValuesError, match="The index has null values."):
+        CatTimeStrictIndex(df)
 
     pd.testing.assert_frame_equal(IdIndex(df), original_df)
-
-    # test coerce_dtypes:
-    df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
-    # Create index with category dtype
-    index = Index(names=["a"], dtypes={"a": "category"})
-    df = index(df, coerce_dtypes=True)
-    assert df.index.dtype == "category"
-    # expect an error if coerce_dtypes is True but dtypes is not specified:
-    index = Index(names=["a"])
-    with pytest.raises(ValueError, match="coerce_dtypes is True but dtypes is not specified."):
-        df = index(df, coerce_dtypes=True)
-    # expect an error if coerce_dtypes is False while the dtypes are not conforming:
-    with pytest.raises(TypeError, match="Index dtypes mismatch:\n"):
-        index = Index(names=["letters"], dtypes={"letters": float})
-        df = index(df)
 
     # Test Index.validate():
     index = Index(names=["a"], sort=True)
     pd_index = pd.Index([1, 3, 2], name="a")
     with pytest.raises(ValueError, match="The index is not sorted."):
+        index.validate(pd_index)
+
+    # Test duplicate values error:
+    pd_index = pd.Index([1, 3, 2, 3], name="a")
+    with pytest.raises(DuplicateValuesError, match="The index has duplicate values"):
         index.validate(pd_index)
 
 
