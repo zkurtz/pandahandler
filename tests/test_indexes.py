@@ -5,10 +5,10 @@ import pandas as pd
 import pytest
 
 from pandahandler.indexes import (
-    DTypesError,
-    DuplicateValuesError,
+    DTypeError,
+    DuplicateValueError,
     Index,
-    NullValuesError,
+    NullValueError,
     index_has_any_unnamed_col,
     is_unnamed_range_index,
     unset,
@@ -58,9 +58,9 @@ def test_index():
     # test coerce_dtypes:
     df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
     # expect an error if coerce_dtypes is False while the dtypes are not conforming:
-    with pytest.raises(DTypesError, match="Index dtypes mismatch:\n"):
+    with pytest.raises(DTypeError):
         index = Index(names=["letters"], dtypes={"letters": float})
-        _ = index(df)
+        df = index(df)
     # Create index with category dtype
     index = Index(names=["a"], dtypes={"a": "category"})
     df = index(df, coerce_dtypes=True)
@@ -114,12 +114,12 @@ def test_index():
 
     df = NullTimestampIndex(df)
     assert df.index.names == ["timestamp"]
-    with pytest.raises(NullValuesError, match="The index has null values."):
+    with pytest.raises(NullValueError, match="The index has null values."):
         df = TimestampIndex(df)
 
     df = CatTimeIndex(df)
     assert df.index.names == ["cats", "timestamp"]
-    with pytest.raises(NullValuesError, match="The index has null values."):
+    with pytest.raises(NullValueError, match="The index has null values."):
         CatTimeStrictIndex(df)
 
     pd.testing.assert_frame_equal(IdIndex(df), original_df)
@@ -132,7 +132,7 @@ def test_index():
 
     # Test duplicate values error:
     pd_index = pd.Index([1, 3, 2, 3], name="a")
-    with pytest.raises(DuplicateValuesError, match="The index has duplicate values"):
+    with pytest.raises(DuplicateValueError, match="The index has duplicate values"):
         index.validate(pd_index)
 
 

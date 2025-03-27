@@ -9,25 +9,27 @@ from pandas.core.indexes.frozen import FrozenList
 
 __all__ = [
     "Index",
-    "DuplicateValuesError",
+    "DuplicateValueError",
+    "NullValueError",
+    "DTypeError",
     "is_unnamed_range_index",
     "unset",
 ]
 
 
-class DuplicateValuesError(ValueError):
+class DuplicateValueError(ValueError):
     """Raised when an index contains duplicate values."""
 
     pass
 
 
-class NullValuesError(ValueError):
+class NullValueError(ValueError):
     """Raised when an index contains null values."""
 
     pass
 
 
-class DTypesError(ValueError):
+class DTypeError(ValueError):
     """Raised when the dtypes of the index columns do not match the specified dtypes."""
 
     pass
@@ -171,7 +173,7 @@ class Index:
         mismatch_mask = types_df["specified"] != types_df["existing"]
         mismatch_df = types_df.loc[mismatch_mask]
         if not mismatch_df.empty:
-            raise DTypesError(f"Index dtypes mismatch:\n{mismatch_df}")
+            raise DTypeError(f"Index dtypes mismatch:\n{mismatch_df}")
 
     def _validate_no_nulls(self, index: pd.Index) -> None:
         """Assert that the provided index does not contain null values.
@@ -184,9 +186,9 @@ class Index:
             for level, name in enumerate(index.names):
                 level_values = index.get_level_values(level)
                 if pd.isna(level_values).any():
-                    raise NullValuesError(f"The index has null values in level {name}.")
+                    raise NullValueError(f"The index has null values in level {name}.")
         elif index.hasnans:
-            raise NullValuesError("The index has null values.")
+            raise NullValueError("The index has null values.")
 
     def validate(self, index: pd.Index, coerce_dtypes: bool = False) -> None:
         """Assert that the provided index complies with this index specification."""
@@ -197,7 +199,7 @@ class Index:
 
         # Validate uniqueness
         if self.require_unique and index.has_duplicates:
-            raise DuplicateValuesError("The index has duplicate values")
+            raise DuplicateValueError("The index has duplicate values")
 
         # Validate no nulls
         self._validate_no_nulls(index)
@@ -218,9 +220,9 @@ class Index:
 
         Raises:
             ValueError: If coerce_dtypes is True but dtypes is not specified.
-            DuplicateValuesError: If the index has duplicate values and require_unique is True.
-            NullValuesError: If the index has null values and allow_null is False.
-            DTypesError: If the index dtypes do not match the specified dtypes and coerce_dtypes is False.
+            DuplicateValueError: If the index has duplicate values and require_unique is True.
+            NullValueError: If the index has null values and allow_null is False.
+            DTypeError: If the index dtypes do not match the specified dtypes and coerce_dtypes is False.
             ValueError: If the index names do not match the specified names.
         """
         if coerce_dtypes and not self.dtypes:
@@ -230,10 +232,10 @@ class Index:
         try:
             self.validate(df.index, coerce_dtypes=coerce_dtypes)
             return df
-        except (DuplicateValuesError, NullValuesError):
+        except (DuplicateValueError, NullValueError):
             # If the error relates expectations that we can't fix by setting the index, let's fail fast:
             raise
-        except DTypesError:
+        except DTypeError:
             if coerce_dtypes:
                 pass
             raise
