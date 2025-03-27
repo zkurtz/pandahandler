@@ -59,7 +59,7 @@ def is_unnamed_range_index(index: pd.Index) -> bool:
 
 def _validate_sort_vs_null(instance: "Index", _: Any, __: Any) -> None:
     if instance.allow_null and instance.sort:
-        raise ValueError("`sorted=True` is not allowed with and `allow_null=True`.")
+        raise ValueError("`sorted=True` is not allowed when `allow_null=True`.")
 
 
 def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
@@ -88,9 +88,10 @@ def unset(df: pd.DataFrame, require_names: bool = True) -> pd.DataFrame:
     Raises:
         ValueError: If the data frame column names overlap with the index names.
         ValueError: If all of the following apply:
-          - require_names is True (the default)
-          - the index is unnamed
-          - the index is not a trivial RangeIndex
+
+          * require_names is True (the default)
+          * the index is unnamed
+          * the index is not a trivial RangeIndex
 
     Returns:
         A copy of the input data frame with the index columns reset as regular columns. The new index is
@@ -216,10 +217,11 @@ class Index:
             coerce_dtypes: Whether to coerce the types of the index columns to the specified dtypes.
 
         Raises:
-            ValueError: If the verify_integrity kwarg is inconsistent with the require_unique attribute.
-            ValueError: If there is overlap between the existing index column names and the column names.
-            ValueError: If coerce_dtypes is True and self.dtypes is None.
-            ValueError: If coerce_dtypes is False and the input df.types do not match self.dtypes.
+            ValueError: If coerce_dtypes is True but dtypes is not specified.
+            DuplicateValuesError: If the index has duplicate values and require_unique is True.
+            NullValuesError: If the index has null values and allow_null is False.
+            DTypesError: If the index dtypes do not match the specified dtypes and coerce_dtypes is False.
+            ValueError: If the index names do not match the specified names.
         """
         if coerce_dtypes and not self.dtypes:
             raise ValueError("coerce_dtypes is True but dtypes is not specified.")
