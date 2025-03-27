@@ -57,11 +57,11 @@ def test_index():
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     original_df = df.copy()
 
-    CatIndex = Index(["cats"], sort=True)
-    TimestampIndex = Index(["timestamp"])
-    NullTimestampIndex = Index(["timestamp"], allow_null=True)
-    IdIndex = Index(["idcol"], sort=True)
-    CatTimeIndex = Index(["cats", "timestamp"], allow_null=True)
+    CatIndex = Index(names=["cats"], sort=True)
+    TimestampIndex = Index(names=["timestamp"])
+    NullTimestampIndex = Index(names=["timestamp"], allow_null=True)
+    IdIndex = Index(names=["idcol"], sort=True)
+    CatTimeIndex = Index(names=["cats", "timestamp"], allow_null=True)
 
     df = CatIndex(df)
     assert df.index.names == ["cats"]
@@ -70,7 +70,7 @@ def test_index():
 
     # Any index operation on a df where a column name of the existing index matches the name of any non-index column
     # should raise an error:
-    with pytest.raises(ValueError, match="index column names match the names of non-index columns: {'cats'}"):
+    with pytest.raises(ValueError, match="a column of the existing index matches a column that already exists"):
         dfx = df.copy()
         dfx["cats"] = dfx.index.to_numpy()
         TimestampIndex(dfx)
@@ -78,13 +78,34 @@ def test_index():
     df = NullTimestampIndex(df)
     assert df.index.names == ["timestamp"]
 
-    with pytest.raises(ValueError, match="Null values are not allowed in the index."):
+    with pytest.raises(ValueError, match="The index has null values."):
         df = TimestampIndex(df)
 
     df = CatTimeIndex(df)
     assert df.index.names == ["cats", "timestamp"]
 
     pd.testing.assert_frame_equal(IdIndex(df), original_df)
+
+    # test coerce_dtypes:
+    df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
+    # Create index with category dtype
+    index = Index(names=["a"], dtypes={"a": "category"})
+    df = index(df, coerce_dtypes=True)
+    assert df.index.dtype == "category"
+    # expect an error if coerce_dtypes is True but dtypes is not specified:
+    index = Index(names=["a"])
+    with pytest.raises(ValueError, match="coerce_dtypes is True but dtypes is not specified."):
+        df = index(df, coerce_dtypes=True)
+    # expect an error if coerce_dtypes is False while the dtypes are not conforming:
+    with pytest.raises(TypeError, match="Index dtypes mismatch:\n"):
+        index = Index(names=["letters"], dtypes={"letters": float})
+        df = index(df)
+
+    # Test Index.validate():
+    index = Index(names=["a"], sort=True)
+    pd_index = pd.Index([1, 3, 2], name="a")
+    with pytest.raises(ValueError, match="The index is not sorted."):
+        index.validate(pd_index)
 
 
 def test_unset() -> None:
@@ -98,7 +119,7 @@ def test_unset() -> None:
 
     # Any index operation on a df where a column name of the existing index matches the name of any non-index column
     # should raise an error:
-    with pytest.raises(ValueError, match="cannot insert cats, already exists"):
+    with pytest.raises(ValueError, match="a column of the existing index matches a column that already exists"):
         unset(df)
 
     # But we can rename the index and then unset it
