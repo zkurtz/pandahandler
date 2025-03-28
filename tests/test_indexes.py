@@ -103,6 +103,14 @@ def test_index_dtype_coercion():
     dfc = index(df, coerce_dtypes=True)
     index._validate_dtypes(index=dfc.index)
 
+    # Expect an error if attempting to coerce a null to a non-nullable dtype:
+    df = pd.DataFrame({"numbers": [1, 2, None]}, index=pd.Index(["x", "y", "z"], name="letters"))
+    index = Index(names=["numbers"], dtypes={"numbers": np.int64})
+    with pytest.raises(pd.errors.IntCastingNaNError):
+        index(df, coerce_dtypes=True)
+    # However, since filtering happens before coercion, we it works if we filter the nulls:
+    index(df, coerce_dtypes=True, filter_nulls=True)
+
 
 def test_index_nullity(caplog: pytest.LogCaptureFixture):
     # Test filter_nulls functionality

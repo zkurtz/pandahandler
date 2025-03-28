@@ -278,15 +278,15 @@ class Index:
         # unset any existing nontrivial index to retain the columns of any existing index as regular columns:
         df = unset(df)  # A no-op if the existing index is an unnamed RangeIndex
 
+        # drop nulls if requested. Do this prior to type coercion because some dtypes do not support nulls.
+        if filter_nulls:
+            df = _filter_nulls(df, columns=self.names)
+
         # if specified, coerce the types of the index columns to the specified dtypes:
         if coerce_dtypes:
             if not self.dtypes:
                 raise ValueError("coerce_dtypes is True but dtypes is not specified.")
             df = df.astype(self.dtypes)
-
-        # Filter out nulls if requested
-        if filter_nulls:
-            df = _filter_nulls(df, columns=self.names)
 
         # set the index:
         df = df.set_index(keys=self.names)
