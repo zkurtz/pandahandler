@@ -16,6 +16,26 @@ from pandahandler.indexes import (
     unset,
 )
 
+CatIndex = Index(names=["cats"], sort=True)
+TimestampIndex = Index(names=["timestamp"])
+NullTimestampIndex = Index(names=["timestamp"], allow_null=True)
+IdIndex = Index(names=["idcol"], sort=True)
+CatTimeIndex = Index(names=["cats", "timestamp"], allow_null=True)
+CatTimeStrictIndex = Index(names=["cats", "timestamp"], allow_null=False, require_unique=True)
+
+
+def _cats_example_df() -> pd.DataFrame:
+    df = pd.DataFrame(
+        {
+            "cats": ["siamese", "little", "persian"],
+            "timestamp": ["2021-01-01", None, "2021-01-02"],
+        },
+        index=pd.RangeIndex(3, name="idcol"),
+    )
+    df["cats"] = df["cats"].astype("category")
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    return df
+
 
 def test_index_has_any_unnamed_col():
     df = pd.DataFrame({"a": [1, 2, 3]})
@@ -56,7 +76,7 @@ def test_is_unnamed_range_index():
     assert not is_unnamed_range_index(df.index)
 
 
-def test_index(caplog: pytest.LogCaptureFixture):
+def test_index_dtype_coercion():
     # test coerce_dtypes:
     df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
     # expect an error if coerce_dtypes is False while the dtypes are not conforming:
@@ -71,7 +91,6 @@ def test_index(caplog: pytest.LogCaptureFixture):
     index = Index(names=["a"])
     with pytest.raises(ValueError, match="coerce_dtypes is True but dtypes is not specified."):
         df = index(df, coerce_dtypes=True)
-
     # test coercion involving datetimes that are formatted as strings:
     df = pd.DataFrame(
         {"dates": ["2021-01-01", "2021-01-02", "2021-01-03"]},
@@ -84,27 +103,11 @@ def test_index(caplog: pytest.LogCaptureFixture):
     dfc = index(df, coerce_dtypes=True)
     index._validate_dtypes(index=dfc.index)
 
-    df = pd.DataFrame(
-        {
-            "cats": ["siamese", "little", "persian"],
-            "timestamp": ["2021-01-01", None, "2021-01-02"],
-        },
-        index=pd.RangeIndex(3, name="idcol"),
-    )
-    df["cats"] = df["cats"].astype("category")
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    original_df = df.copy()
 
-    CatIndex = Index(names=["cats"], sort=True)
-    TimestampIndex = Index(names=["timestamp"])
-    NullTimestampIndex = Index(names=["timestamp"], allow_null=True)
-    IdIndex = Index(names=["idcol"], sort=True)
-    CatTimeIndex = Index(names=["cats", "timestamp"], allow_null=True)
-    CatTimeStrictIndex = Index(names=["cats", "timestamp"], allow_null=False, require_unique=True)
-
+def test_index_nullity(caplog: pytest.LogCaptureFixture):
     # Test filter_nulls functionality
-    df_with_nulls = df.copy()
-    df_filtered = TimestampIndex(df_with_nulls, filter_nulls=True)
+    df = _cats_example_df()
+    df_filtered = TimestampIndex(df, filter_nulls=True)
     assert len(df_filtered) == 2  # Should have filtered out the row with None
     assert not df_filtered.index.hasnans
 
@@ -117,18 +120,8 @@ def test_index(caplog: pytest.LogCaptureFixture):
     assert len(df_multi_filtered) == 2  # Should have filtered out the row with None
     assert unset(df_multi_filtered[[]]).notna().all().all()  # pyright: ignore
 
-    df = CatIndex(df)
-    assert df.index.names == ["cats"]
-    assert df.index.is_monotonic_increasing
-    assert df.index.is_unique
-
-    # Any index operation on a df where a column name of the existing index matches the name of any non-index column
-    # should raise an error:
-    with pytest.raises(ValueError, match="a column of the existing index matches a column that already exists"):
-        dfx = df.copy()
-        dfx["cats"] = dfx.index.to_numpy()
-        TimestampIndex(dfx)
-
+    # Nulls may or may not raise an error depending on the index:
+    df = _cats_example_df()
     df = NullTimestampIndex(df)
     assert df.index.names == ["timestamp"]
     with pytest.raises(NullValueError, match="The index has null values."):
@@ -139,7 +132,26 @@ def test_index(caplog: pytest.LogCaptureFixture):
     with pytest.raises(NullValueError, match="The index has null values."):
         CatTimeStrictIndex(df)
 
-    pd.testing.assert_frame_equal(IdIndex(df), original_df)
+    pd.testing.assert_frame_equal(IdIndex(df), _cats_example_df())
+
+
+def test_index_sorting():
+    df = _cats_example_df()
+    assert not df["cats"].is_monotonic_increasing
+    df = CatIndex(df)
+    assert df.index.names == ["cats"]
+    assert df.index.is_monotonic_increasing
+    assert df.index.is_unique
+
+
+def test_index_misc():
+    # Any index operation on a df where a column name of the existing index matches the name of any non-index column
+    # should raise an error:
+    df = _cats_example_df()
+    with pytest.raises(ValueError, match="a column of the existing index matches a column that already exists"):
+        dfx = df.copy()
+        dfx["idcol"] = dfx.index.to_numpy()
+        TimestampIndex(dfx)
 
     # Test Index.validate():
     index = Index(names=["a"], sort=True)
