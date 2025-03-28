@@ -7,11 +7,10 @@ from attr.validators import min_len
 from attrs import field, frozen
 from pandas.core.indexes.frozen import FrozenList
 
+from pandahandler.frames.decorators.framesize import log_rowcount_change
+
 __all__ = [
     "Index",
-    "DuplicateValueError",
-    "NullValueError",
-    "DTypeError",
     "is_unnamed_range_index",
     "unset",
 ]
@@ -33,6 +32,34 @@ class DTypeError(ValueError):
     """Raised when the dtypes of the index columns do not match the specified dtypes."""
 
     pass
+
+
+def _filter_nulls(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    """Filter out rows with null values in the specified columns.
+
+    Args:
+        df: The data frame to filter.
+        columns: The columns to check for null values.
+    """
+    for col in columns:
+        col_series = df[col]
+        assert isinstance(col_series, pd.Series), "expected a series"
+        if pd.notna(col_series).all():
+            continue
+
+        @log_rowcount_change(describe_func=lambda *args, **kwargs: f"dropping rows with null {col}")
+        def _filter(df: pd.DataFrame, column: str) -> pd.DataFrame:
+            """Filter out rows with null values in the specified column.
+
+            Args:
+                df: The data frame to filter.
+                column: The column filter on.
+            """
+            mask = pd.notna(df[column])
+            return df.loc[mask]
+
+        df = _filter(df, col)
+    return df
 
 
 def _get_dtypes(index: pd.Index) -> pd.Series:
@@ -208,7 +235,7 @@ class Index:
         if self.sort and not index.is_monotonic_increasing:
             raise ValueError("The index is not sorted.")
 
-    def __call__(self, df: pd.DataFrame, coerce_dtypes: bool = False) -> pd.DataFrame:
+    def __call__(self, df: pd.DataFrame, coerce_dtypes: bool = False, filter_nulls: bool = False) -> pd.DataFrame:
         """Set the index on the data frame.
 
         Any named columns of the current df index that are not part of the new index will be converted to new
@@ -217,6 +244,8 @@ class Index:
         Args:
             df: The data frame to set the index on.
             coerce_dtypes: Whether to coerce the types of the index columns to the specified dtypes.
+            filter_nulls: Whether to filter out rows with null values in the index columns before setting the index.
+                This is useful when allow_null is False and you want to keep the rows with non-null values.
 
         Raises:
             ValueError: If coerce_dtypes is True but dtypes is not specified.
@@ -228,19 +257,22 @@ class Index:
         if coerce_dtypes and not self.dtypes:
             raise ValueError("coerce_dtypes is True but dtypes is not specified.")
 
-        # This is a no-op if the existing index already matches the index specification:
         try:
             self.validate(df.index, coerce_dtypes=coerce_dtypes)
+            # If we get here, the index already matches the index specification and we're done:
             return df
-        except (DuplicateValueError, NullValueError):
-            # If the error relates expectations that we can't fix by setting the index, let's fail fast:
+        except DuplicateValueError:
+            raise
+        except NullValueError:
+            if filter_nulls:  # Then filtering will fix the error
+                pass
             raise
         except DTypeError:
-            if coerce_dtypes:
+            if coerce_dtypes:  # Then coercion will fix the error
                 pass
             raise
         except ValueError:
-            # Other validation errors might be fixable by setting the index, so we continue
+            # Other validation errors will be fixed by setting the index
             pass
 
         # unset any existing nontrivial index to retain the columns of any existing index as regular columns:
@@ -251,6 +283,10 @@ class Index:
             if not self.dtypes:
                 raise ValueError("coerce_dtypes is True but dtypes is not specified.")
             df = df.astype(self.dtypes)
+
+        # Filter out nulls if requested
+        if filter_nulls:
+            df = _filter_nulls(df, columns=self.names)
 
         # set the index:
         df = df.set_index(keys=self.names)
