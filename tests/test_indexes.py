@@ -1,5 +1,7 @@
 """Test index utilities."""
 
+import logging
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -54,7 +56,7 @@ def test_is_unnamed_range_index():
     assert not is_unnamed_range_index(df.index)
 
 
-def test_index():
+def test_index(caplog: pytest.LogCaptureFixture):
     # test coerce_dtypes:
     df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
     # expect an error if coerce_dtypes is False while the dtypes are not conforming:
@@ -85,7 +87,7 @@ def test_index():
     df = pd.DataFrame(
         {
             "cats": ["siamese", "little", "persian"],
-            "timestamp": ["2021-01-01", "2021-01-02", None],
+            "timestamp": ["2021-01-01", None, "2021-01-02"],
         },
         index=pd.RangeIndex(3, name="idcol"),
     )
@@ -99,6 +101,21 @@ def test_index():
     IdIndex = Index(names=["idcol"], sort=True)
     CatTimeIndex = Index(names=["cats", "timestamp"], allow_null=True)
     CatTimeStrictIndex = Index(names=["cats", "timestamp"], allow_null=False, require_unique=True)
+
+    # Test filter_nulls functionality
+    df_with_nulls = df.copy()
+    df_filtered = TimestampIndex(df_with_nulls, filter_nulls=True)
+    assert len(df_filtered) == 2  # Should have filtered out the row with None
+    assert not df_filtered.index.hasnans
+
+    # Test filter_nulls with MultiIndex
+    df_multi = df.copy()
+    with caplog.at_level(logging.INFO):
+        df_multi_filtered = CatTimeStrictIndex(df_multi, filter_nulls=True)
+        assert "dropping rows with null timestamp returned 2 rows, down 1 rows (-33.3%)." in caplog.text
+        caplog.clear()
+    assert len(df_multi_filtered) == 2  # Should have filtered out the row with None
+    assert unset(df_multi_filtered[[]]).notna().all().all()  # pyright: ignore
 
     df = CatIndex(df)
     assert df.index.names == ["cats"]
