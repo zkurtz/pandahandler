@@ -90,7 +90,7 @@ def log_rowcount_change(
 
     def create_decorator(func: DataframeToDataframe) -> DataframeToDataframe:
         @functools.wraps(func)
-        def wrapper(df: pd.DataFrame, *args, **kwargs):
+        def wrapper(df: pd.DataFrame, *args, **kwargs) -> pd.DataFrame:
             # Resolve what logger to use
             if logger:
                 _logger = logger

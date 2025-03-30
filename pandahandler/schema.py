@@ -40,7 +40,7 @@ class Schema:
     the values are index objects expressing the integeger-category mappings defining that column's categorical encoding.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Run consistency checks."""
         categoricals = set(self.categoricals)
         numerics = set(self.numerics)

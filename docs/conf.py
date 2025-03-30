@@ -7,6 +7,7 @@ For the full list of built-in configuration values, see the documentation:
 
 import os
 import sys
+from typing import Any
 
 sys.path.insert(0, os.path.abspath("../"))
 project = "pandahandler"
@@ -74,7 +75,7 @@ html_theme_options = {
 }
 
 
-def linkcode_resolve(domain, info):
+def linkcode_resolve(domain: str, info: dict[str, Any]) -> str | None:
     """Utility function to generate GitHub source links."""
     if domain != "py":
         return None
