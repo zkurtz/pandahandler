@@ -32,7 +32,7 @@ class Tabulation:
     n_distinct: int
     """The number of distinct values in the input series (i.e. the number of rows in `df`)."""
 
-    def __attrs_post_init__(self):
+    def __attrs_post_init__(self) -> None:
         """Data validation.
 
         Raises:

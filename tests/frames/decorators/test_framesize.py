@@ -39,7 +39,7 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
     with caplog.at_level(logging.INFO):
         caplog.clear()
         double(df)
-        assert caplog.text.startswith("INFO     test_framesize:test_framesize.py")
+        assert caplog.text.startswith(f"INFO     {__name__}:test_framesize.py")
         assert caplog.text.endswith("double returned 6 rows, up 3 rows (100.0%).\n")
 
         caplog.clear()
@@ -62,7 +62,7 @@ def test_log_rowcount_change(caplog: pytest.LogCaptureFixture):
         # But at INFO level, the decorator should of course log:
         caplog.clear()
         filter_smalls(df)
-        assert caplog.text.startswith("WARNING  test_framesize:test_framesize.py")
+        assert caplog.text.startswith(f"WARNING  {__name__}")
         assert caplog.text.endswith("filter_smalls returned 2 rows, down 1 rows (-33.3%).\n")
 
     with caplog.at_level(logging.INFO):

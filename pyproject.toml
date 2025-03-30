@@ -1,6 +1,6 @@
 [project]
 name = "pandahandler"
-version = "0.7.10"
+version = "0.7.11"
 description = "Tools for handling pandas objects."
 authors = [{ name = "Zach Kurtz", email = "zkurtz@gmail.com" }]
 readme = "README.md"
@@ -32,7 +32,7 @@ Source = "https://github.com/zkurtz/pandahandler"
 package = true
 
 [tool.bumpversion]
-current_version = "0.7.10"
+current_version = "0.7.11"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 tag = false
@@ -50,6 +50,7 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests",]
+addopts = "--import-mode=importlib"
 
 [tool.pyright]
 include = ["pandahandler", "tests"]
@@ -61,13 +62,17 @@ line-length = 120
 select = [
   # ruff defaults:
   "E4", "E7", "E9", "F",
-  # other rule groups:
-  "E5", # line length
+  # additional rule groups:
+  "ANN", # require pyright type annotations
+  "D", # google-style docstrings
+  "E5", # pycodestyle line formatting including line length
   "I", # flake8-import-order
   "TID", # flake8-tidy-imports
-  "D", # google-style docstrings
 ]
 ignore = [
+  "ANN002", # Missing type annotation for *args
+  "ANN003", # Missing type annotation for **kwargs
+  "ANN401", # Dynamically typed expressions (typing.Any) are disallowed in `**kwargs`
   "D202", # would require one blank line after the last section of a multi-line docstring
   "D203", # would require one blank line at start of class docstring
   "D213", # would require multi-line docstring to start with a hard return
@@ -80,4 +85,7 @@ ban-relative-imports = "all"
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["D104"] # would require module-level documentation
-"test_*.py" = ["D"]
+"test_*.py" = [
+  "ANN201", # requires return type
+  "D",
+]
