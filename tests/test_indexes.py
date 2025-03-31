@@ -123,6 +123,15 @@ def test_index_dtype_coercion():
     with pytest.raises(DTypeError):
         idx(df_with_wrong_dtype, coerce_dtypes=False)
 
+    # Suppose you have two versions of an index that are the same except that the second one specifies dtypes. Then
+    # if you set the weaker index first followed by the stronger index using dtype coercion, everything works:
+    idx1 = Index(names=["a"])
+    idx2 = Index(names=["a"], dtypes={"a": "category"})
+    df = pd.DataFrame({"a": [1, 2]}, index=pd.Index([1, 2], name="b"))
+    df = idx1(df)
+    df = idx2(df, coerce_dtypes=True)
+    assert df.index.dtype == "category"
+
 
 def test_index_nullity(caplog: pytest.LogCaptureFixture):
     # Test that filter_nulls=False raises NullValueError
@@ -158,6 +167,14 @@ def test_index_nullity(caplog: pytest.LogCaptureFixture):
         CatTimeStrictIndex(df)
 
     pd.testing.assert_frame_equal(IdIndex(df), _cats_example_df())
+
+    # Suppose you have two versions of an index that are the same except that the second one disallows nulls. Then
+    # if you set the weaker index first followed by the stronger index using null filtering, everything works:
+    idx1 = Index(names=["a"], allow_null=True)
+    idx2 = Index(names=["a"])
+    df = pd.DataFrame({"a": [1, 3, 2, None]}, index=pd.Index([1, 2, 3, 4], name="b"))
+    df = idx1(df)
+    _ = idx2(df, filter_nulls=True)
 
 
 def test_index_sorting():
