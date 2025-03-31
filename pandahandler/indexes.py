@@ -291,6 +291,12 @@ class Index:
         # set the index:
         df = df.set_index(keys=self.names)
 
+        if not (self.allow_null or filter_nulls):
+            self._validate_no_nulls(index=df.index)
+
+        if self.dtypes and not coerce_dtypes:
+            self._validate_dtypes(index=df.index)
+
         # sort if required
         if self.sort:
             df = df.sort_index()

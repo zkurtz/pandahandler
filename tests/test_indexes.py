@@ -81,46 +81,63 @@ def test_index_dtype_coercion():
     df = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
     # expect an error if coerce_dtypes is False while the dtypes are not conforming:
     with pytest.raises(DTypeError):
-        index = Index(names=["letters"], dtypes={"letters": float})
-        df = index(df)
+        idx = Index(names=["letters"], dtypes={"letters": float})
+        df = idx(df)
     # Create index with category dtype
-    index = Index(names=["a"], dtypes={"a": "category"})
-    df = index(df, coerce_dtypes=True)
+    idx = Index(names=["a"], dtypes={"a": "category"})
+    df = idx(df, coerce_dtypes=True)
     assert df.index.dtype == "category"
     # expect an error if coerce_dtypes is True but dtypes is not specified:
-    index = Index(names=["a"])
+    idx = Index(names=["a"])
     with pytest.raises(ValueError, match="coerce_dtypes is True but dtypes is not specified."):
-        df = index(df, coerce_dtypes=True)
+        df = idx(df, coerce_dtypes=True)
     # test coercion involving datetimes that are formatted as strings:
     df = pd.DataFrame(
         {"dates": ["2021-01-01", "2021-01-02", "2021-01-03"]},
         index=pd.Index([1, 2, 3.0], name="numbers"),
     )
-    index = Index(
+    idx = Index(
         names=["dates", "numbers"],
         dtypes={"numbers": np.int64, "dates": np.dtype("datetime64[ns]")},
     )
-    dfc = index(df, coerce_dtypes=True)
-    index._validate_dtypes(index=dfc.index)
+    dfc = idx(df, coerce_dtypes=True)
+    idx._validate_dtypes(index=dfc.index)
 
     # Expect an error if attempting to coerce a null to a non-nullable dtype:
     df = pd.DataFrame({"numbers": [1, 2, None]}, index=pd.Index(["x", "y", "z"], name="letters"))
-    index = Index(names=["numbers"], dtypes={"numbers": np.int64})
+    idx = Index(names=["numbers"], dtypes={"numbers": np.int64})
     with pytest.raises(pd.errors.IntCastingNaNError):
-        index(df, coerce_dtypes=True)
+        idx(df, coerce_dtypes=True)
     # However, since filtering happens before coercion, we it works if we filter the nulls:
-    index(df, coerce_dtypes=True, filter_nulls=True)
+    idx(df, coerce_dtypes=True, filter_nulls=True)
+
+    # Test coerce_dtypes with DTypeError
+    df_with_wrong_dtype = pd.DataFrame({"a": [1, 2, 3]}, index=pd.Index(["x", "y", "z"], name="letters"))
+    idx = Index(names=["a"], dtypes={"a": "category"})
+
+    # coerce_dtypes=True should not raise DTypeError since coercion fixes the dtype
+    df_coerced = idx(df_with_wrong_dtype, coerce_dtypes=True)
+    assert df_coerced.index.dtype == "category"
+
+    # But coerce_dtypes=False should raise DTypeError if the dtypes don't already match
+    with pytest.raises(DTypeError):
+        idx(df_with_wrong_dtype, coerce_dtypes=False)
 
 
 def test_index_nullity(caplog: pytest.LogCaptureFixture):
-    # Test filter_nulls functionality
-    df = _cats_example_df()
-    df_filtered = TimestampIndex(df, filter_nulls=True)
+    # Test that filter_nulls=False raises NullValueError
+    df_with_nulls = _cats_example_df()
+    with pytest.raises(NullValueError, match="The index has null values."):
+        TimestampIndex(df_with_nulls, filter_nulls=False)
+
+    # But filter_nulls=True avoids a NullValueError because filtering removes the nulls:
+    df_with_nulls = _cats_example_df()
+    df_filtered = TimestampIndex(df_with_nulls, filter_nulls=True)
     assert len(df_filtered) == 2  # Should have filtered out the row with None
     assert not df_filtered.index.hasnans
 
     # Test filter_nulls with MultiIndex
-    df_multi = df.copy()
+    df_multi = _cats_example_df()
     with caplog.at_level(logging.INFO):
         df_multi_filtered = CatTimeStrictIndex(df_multi, filter_nulls=True)
         assert "dropping rows with null timestamp returned 2 rows, down 1 rows (-33.3%)." in caplog.text
@@ -162,15 +179,15 @@ def test_index_misc():
         TimestampIndex(dfx)
 
     # Test Index.validate():
-    index = Index(names=["a"], sort=True)
+    idx = Index(names=["a"], sort=True)
     pd_index = pd.Index([1, 3, 2], name="a")
     with pytest.raises(ValueError, match="The index is not sorted."):
-        index.validate(pd_index)
+        idx.validate(pd_index)
 
     # Test duplicate values error:
     pd_index = pd.Index([1, 3, 2, 3], name="a")
     with pytest.raises(DuplicateValueError, match="The index has duplicate values"):
-        index.validate(pd_index)
+        idx.validate(pd_index)
 
 
 def test_unset() -> None:
