@@ -263,18 +263,15 @@ class Index:
             return df
         except DuplicateValueError:
             raise
+        # Raise other exceptions only when no automatic fix is specified:
         except NullValueError:
-            if filter_nulls:  # Then filtering will fix the error
-                pass
-            else:
+            if not filter_nulls:
                 raise
         except DTypeError:
-            if coerce_dtypes:  # Then coercion will fix the error
-                pass
-            else:
+            if not coerce_dtypes:
                 raise
         except ValueError:
-            # Other validation errors will be fixed by setting the index
+            # All other validation errors should be fixed by setting the index
             pass
 
         # unset any existing nontrivial index to retain the columns of any existing index as regular columns:
