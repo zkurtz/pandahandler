@@ -266,11 +266,13 @@ class Index:
         except NullValueError:
             if filter_nulls:  # Then filtering will fix the error
                 pass
-            raise
+            else:
+                raise
         except DTypeError:
             if coerce_dtypes:  # Then coercion will fix the error
                 pass
-            raise
+            else:
+                raise
         except ValueError:
             # Other validation errors will be fixed by setting the index
             pass
