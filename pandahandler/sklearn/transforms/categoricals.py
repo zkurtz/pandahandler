@@ -13,12 +13,10 @@ class SeriesEncoder:
     """Categorical encoding of the values for a pandas Series.
 
     Attributes:
-        categories: A list of non-null categories.
-        has_seen_null: Whether null values were seen in the training data.
+        categories: The list of distinct non-null categories.
     """
 
     categories: list[Any]
-    has_seen_null: bool
 
     @classmethod
     def fit(cls, series: pd.Series) -> "SeriesEncoder":
@@ -31,18 +29,15 @@ class SeriesEncoder:
             A SeriesEncoder object with the unique categories and null presence.
         """
         series = series.astype("category")
-        values = series.cat.categories.to_list()
-        return cls(
-            categories=values,
-            has_seen_null=bool(series.isnull().any()),
-        )
+        categories = series.cat.categories
+        return cls(categories=categories.to_list())
 
     def __call__(self, series: pd.Series) -> pd.Series:
         """Encode a series as categorical.
 
         This encoder maintains a distinction between null values and "never-before-seen" values:
         - Pandas maps null values to -1.
-        - Pandas also maps any never-before-seen values to -1, which is loses information. Instead, we identify
+        - Pandas also maps any never-before-seen values to -1, which loses information. Instead, we identify
           such values and postpend them to the list of categories, so that they are encoded as new categories.
 
         This distinction can matter for certain ML algorithms, such as XGBoost. See also
