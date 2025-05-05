@@ -61,7 +61,7 @@ def test_encoder():
     pred_df = pd.DataFrame(
         {
             "color": ["grey", None],
-            "unit": ["liter", "liter"],
+            "unit": ["meter", "liter"],
         },
     )
     transformed_df = encoder.transform(pred_df)
@@ -70,6 +70,11 @@ def test_encoder():
 
     # The unit column is not transformed to categorical since it was not included in `specified_columns`:
     assert transformed_df["unit"].dtype == "object"
+
+    # Actually, any column not in self.encoders may be ignored:
+    pred_df = pd.DataFrame({"color": ["grey", "red"]})
+    transformed_df = encoder.transform(pred_df)
+    assert transformed_df["color"].cat.codes.to_list() == [2, 1]
 
 
 def test_encoder_xgboost():
