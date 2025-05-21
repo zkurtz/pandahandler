@@ -114,19 +114,25 @@ def test_encoder_xgboost():
     )
 
     # Now predict on data that includes a new input category:
-    pred_df = pd.DataFrame(
-        {
-            "unit": ["liter", "meter", None, "new-value"],
-        }
-    )
+    pred_df = pd.DataFrame({"unit": ["liter", "meter", None, "new-value"]})
     pred_df = encoder.transform(pred_df)
     dpred = xgb.DMatrix(pred_df, enable_categorical=True)
-    preds = np.array(xgb_model.predict(dpred))
+    pred_df["preds"] = xgb_model.predict(dpred)
 
     # The interesting parts here are
     # 1. XGBoost learns a value for None (i.e. 3.0)
     # 2. The new category "new_value" reverts to the grand mean, since it was never seen before:
-    assert np.allclose(preds, np.array([1.0, 2.0, 3.0, 2.0]), rtol=1e-5)
+    assert np.allclose(pred_df["preds"].to_numpy(), np.array([1.0, 2.0, 3.0, 2.0]), rtol=1e-5)
+
+    # Verify that all of this fancy categorical handling was necessary: Naively doing categorical
+    # encoding can result in totally new values being assigned to the same codes as previously seen values,
+    # leading to nonsense predictions:
+    pred_df2 = pd.DataFrame({"unit": ["inch", "liter"]}).astype("category")
+    dpred2 = xgb.DMatrix(pred_df2, enable_categorical=True)
+    pred_df2["preds"] = xgb_model.predict(dpred2)
+    # Now we see that the same input "liter" is assigned a different value (2.0) than it was in the training data (1.0)
+    assert pred_df2.set_index("unit")["preds"].loc["liter"] == 2.0
+    assert pred_df.set_index("unit")["preds"].loc["liter"] == 1.0
 
 
 def test_encoder_lightgbm():
