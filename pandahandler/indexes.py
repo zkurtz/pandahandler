@@ -287,7 +287,7 @@ class Index:
                 raise ValueError("coerce_dtypes is True but dtypes is not specified.")
             df = df.astype(self.dtypes)
 
-        # if requiring unique index values, check for duplicates:
+        # If requiring unique index values, check for duplicates:
         if self.require_unique and df[self.names].duplicated().any():
             raise DuplicateValueError("The index has duplicate values.")
 
