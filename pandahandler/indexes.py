@@ -288,7 +288,7 @@ class Index:
             df = df.astype(self.dtypes)
 
         # If requiring unique index values, check for duplicates:
-        if self.require_unique and df[self.names].duplicated().any():
+        if self.require_unique and df.duplicated(subset=self.names).any():
             raise DuplicateValueError("The index has duplicate values.")
 
         # set the index:
