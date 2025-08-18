@@ -217,7 +217,7 @@ class Index:
         elif index.hasnans:
             raise NullValueError("The index has null values.")
 
-    def validate(self, index: pd.Index, coerce_dtypes: bool = False) -> None:
+    def validate(self, index: pd.Index) -> None:
         """Assert that the provided index complies with this index specification."""
         if not index.names == self.names:
             raise ValueError(f"Index names mismatch: {index.names} != {self.names}.")
@@ -258,7 +258,7 @@ class Index:
             raise ValueError("coerce_dtypes is True but dtypes is not specified.")
 
         try:
-            self.validate(df.index, coerce_dtypes=coerce_dtypes)
+            self.validate(df.index)
             # If we get here, the index already matches the index specification and we're done:
             return df
         except DuplicateValueError:
@@ -287,6 +287,10 @@ class Index:
                 raise ValueError("coerce_dtypes is True but dtypes is not specified.")
             df = df.astype(self.dtypes)
 
+        # if requiring unique index values, check for duplicates:
+        if self.require_unique and df[self.names].duplicated().any():
+            raise DuplicateValueError("The index has duplicate values.")
+
         # set the index:
         df = df.set_index(keys=self.names)
 
@@ -307,3 +311,23 @@ class Index:
             expected = f"Expected: {self.names}"
             provided = f"Provided: {index.names}"
             raise ValueError(f"Index names mismatch:\n   {expected}\n   {provided}.")
+
+
+def get_column(df: pd.DataFrame, name: str) -> pd.Series:
+    """Get a column from the DataFrame.
+
+    A general-purpose function to retrieve a column from a DataFrame by its name:
+    - works regardless of whether the named column is a regular column or an index column.
+    - returns a series with the same name as the column and the same index as the DataFrame.
+
+    Args:
+        df: The DataFrame to get the column from.
+        name: The name of the column to get.
+    """
+    if name in df.columns:
+        # type checkers understand that df.loc[:, name] is a pd.Series, but don't always know what to make of df[name]:
+        return df.loc[:, name]
+    if name in df.index.names:
+        values = df.index.get_level_values(name)
+        return pd.Series(values, name=name, index=df.index)
+    raise KeyError(f"Column '{name}' not found in DataFrame columns or index names.")
