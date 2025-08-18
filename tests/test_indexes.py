@@ -11,6 +11,7 @@ from pandahandler.indexes import (
     DuplicateValueError,
     Index,
     NullValueError,
+    get_column,
     index_has_any_unnamed_col,
     is_unnamed_range_index,
     unset,
@@ -205,6 +206,16 @@ def test_index_misc():
     pd_index = pd.Index([1, 3, 2, 3], name="a")
     with pytest.raises(DuplicateValueError, match="The index has duplicate values"):
         idx.validate(pd_index)
+    # Setting an index should raise an error if the input data has disallowed duplicate values:
+    StrictIndex = Index(names=["cats", "timestamp"], require_unique=True)
+    df = _cats_example_df().dropna()
+    repeat_row = pd.DataFrame(
+        {"cats": ["siamese"], "timestamp": [pd.Timestamp("2021-01-01")]},
+        index=pd.Index([-1], name="idcol"),
+    )
+    df = pd.concat([df, repeat_row])
+    with pytest.raises(DuplicateValueError, match="The index has duplicate values"):
+        StrictIndex(df)
 
 
 def test_unset() -> None:
@@ -243,3 +254,24 @@ def test_unset() -> None:
     # but we can override that:
     dfx = unset(df, require_names=False)
     assert "index" in dfx
+
+
+def test_get_column() -> None:
+    df = _cats_example_df().dropna()
+    assert not df.empty
+    df = TimestampIndex(df)
+
+    # Get a regular column:
+    cats = get_column(df, "cats")
+    pd.testing.assert_series_equal(cats, df["cats"])
+
+    # Get an index column:
+    assert "timestamp" not in df.columns
+    times = get_column(df, "timestamp")
+    assert pd.Index(times).equals(df.index.get_level_values("timestamp"))
+    assert times.name == "timestamp"
+    pd.testing.assert_index_equal(times.index, df.index)
+
+    # Expect an error if the column is not in the index or the DataFrame:
+    with pytest.raises(KeyError):
+        _ = get_column(df, "fake_column_name")
